@@ -1,0 +1,5 @@
+*.idb
+packages/
+x64/
+tree/Release/
+tree/Debug/
