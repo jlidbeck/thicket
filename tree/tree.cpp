@@ -31,7 +31,7 @@ public:
 
     inline float det() const { return (m_accum.at<float>(0, 0) * m_accum.at<float>(0, 0) + m_accum.at<float>(1, 0) * m_accum.at<float>(1, 0)); }
 
-    bool operator!() const { return (det() < 0.01); }
+    bool operator!() const { return (det() < 0.005); }
 
     void draw(cv::Mat& image)
     {
@@ -116,7 +116,8 @@ public:
 
             auto cutoff = treeQueue.top().det();
 
-            while (!treeQueue.empty() && treeQueue.top().det() >= cutoff)
+            int nodesProcessed = 0;
+            while (!treeQueue.empty() && nodesProcessed < 100)// treeQueue.top().det() >= cutoff)
             {
                 auto currentNode = treeQueue.top();
                 treeQueue.pop();
@@ -133,6 +134,7 @@ public:
                 //cv::rectangle(image, rect, cv::Scalar_<uint8_t>(255, 192, 128, 255), -1, cv::LineTypes::LINE_8, 0);
                 //cv::rectangle(image, rect, cv::Scalar_<uint8_t>(255, 255, 255, 255), 1, cv::LineTypes::LINE_8, 0);
 
+                ++nodesProcessed;
 
                 currentNode.draw(image);
             }
