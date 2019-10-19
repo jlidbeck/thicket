@@ -15,6 +15,35 @@ using namespace cv;
 using namespace std;
 
 
+class qcanvas
+{
+public:
+    cv::Mat1f globalTransform;
+    cv::Mat image;
+
+    qcanvas(cv::Mat image) {
+        create(image);
+    }
+
+    qcanvas() {
+    }
+
+    void create(cv::Mat im) {
+        image = im;
+
+        int range = 2;  // show -range .. range in each dimension
+        float scale = std::min(image.cols / 2 / range, image.rows / 2 / range);
+
+        // scale, flip vertical, offset
+        globalTransform = cv::Mat1f::eye(3, 3);
+        globalTransform = (Mat1f(3, 3) <<
+            scale, 0, image.cols / 2,
+            0, -scale, image.rows / 2,
+            0, 0, 1);
+    }
+};
+
+
 class qnode
 {
 public:
@@ -25,31 +54,28 @@ public:
     qnode(int time = 0) {
         begin = time;
 
-        m_accum.create(3, 3);
-        cv::setIdentity(m_accum);
+        m_accum = cv::Mat1f::eye(3, 3);
         generation = 0;
     }
 
     inline float det() const { return (m_accum.at<float>(0, 0) * m_accum.at<float>(0, 0) + m_accum.at<float>(1, 0) * m_accum.at<float>(1, 0)); }
 
-    bool operator!() const { return (det() < 0.005); }
+    bool operator!() const { return (det() < 1e-6); }
 
-    void draw(cv::Mat& image)
+    void draw(qcanvas &canvas)
     {
-        cv::Mat1f global = cv::Mat1f::eye(3, 3);
-        global.at<float>(0, 2) = 500;
-        global.at<float>(1, 2) = 500;
-        global.at<float>(1, 1) = -1;
+        cv::Mat1f m = canvas.globalTransform * m_accum;
 
-        cv::Mat1f m = global * m_accum;
-
-        vector<cv::Point2f> v = { { {-20,0}, {20,0}, {20,100}, {-20,100} } };
+        vector<cv::Point2f> v = { { 
+            { .1,-1}, { .08,0}, { .1, 1}, 
+            {-.1, 1}, {-.08,0}, {-.1,-1}
+            } };
         cv::transform(v, v, m(cv::Range(0, 2), cv::Range::all()));
         vector<vector<cv::Point> > pts(1);
         for (auto const& p : v)
             pts[0].push_back(p);
 
-        cv::fillPoly(image, pts, cv::Scalar_<uint8_t>(255, 192, 128, 255), cv::LineTypes::LINE_8, 0);
+        cv::fillPoly(canvas.image, pts, cv::Scalar_<uint8_t>(255, 192, 128, 255), cv::LineTypes::LINE_8, 0);
         //cv::fillPoly(image, v, cv::Scalar_<uint8_t>(255, 255, 255, 255), -1, 0);
     }
 
@@ -70,6 +96,7 @@ public:
     };
 };
 
+
 class qtransform
 {
 public:
@@ -88,6 +115,9 @@ public:
 };
 
 #define Half12  0.94387431268
+
+//  (1/2)^(1/n)
+//  growth factor with a halflife of {n}
 float halfRoot(int n)
 {
     return pow(0.5f, 1.0f / (float)n);
@@ -97,26 +127,30 @@ class The
 {
 public:
     Mat loadedImage;
-    Mat image;
+    qcanvas canvas;
 
     priority_queue<qnode, vector<qnode>, qnode::BiggestFirst> treeQueue;
 
-    int minNodesProcessedPerFrame = 1;
+    int minNodesProcessedPerFrame = 100;
+    int maxNodesProcessedPerFrame = 1024;
 
     void run()
     {
+        canvas.create(canvas.image);
+
         qnode rootNode;
+        //rootNode.m_accum = transform3x3::getRotationMatrix2D(cv::Point2f(), 90, 1);
         treeQueue.push(rootNode);
 
         //qtransform  t1( 30, halfRoot(6), cv::Point2f(0, 90)),
         //            t2(-30, halfRoot(6), cv::Point2f(0, 60));
 
-        qtransform  t1( 90, halfRoot(2), cv::Point2f(0, 100)),
-                    t2(-90, halfRoot(2), cv::Point2f(0, 50));
+        qtransform  t1( 90, halfRoot(2), cv::Point2f(0,  0.9)),
+                    t2(-90, halfRoot(2), cv::Point2f(0, -0.9));
 
         std::random_device rd;  //Will be used to obtain a seed for the random number engine
         std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
-        std::uniform_int_distribution<> dis(0, the.image.cols - 50);
+        std::uniform_int_distribution<> dis(0, canvas.image.cols - 50);
         //cv::Rect rect(0, 0, 50, 50);
 
         int time = 0;
@@ -128,7 +162,9 @@ public:
             auto cutoff = treeQueue.top().det();
 
             int nodesProcessed = 0;
-            while (!treeQueue.empty() && nodesProcessed < minNodesProcessedPerFrame)// treeQueue.top().det() >= cutoff)
+            while (!treeQueue.empty() && //nodesProcessed < minNodesProcessedPerFrame)
+                                         //treeQueue.top().det() >= cutoff && nodesProcessed < maxNodesProcessedPerFrame)
+                                         treeQueue.top().generation*10<time && nodesProcessed < maxNodesProcessedPerFrame)
             {
                 auto currentNode = treeQueue.top();
                 treeQueue.pop();
@@ -147,13 +183,13 @@ public:
 
                 ++nodesProcessed;
 
-                currentNode.draw(image);
+                currentNode.draw(canvas);
             }
 
-            image *= 0.99;
+            canvas.image *= 0.9;
 
             // update display
-            imshow("Memtest", image); // Show our image inside it.
+            imshow("Memtest", canvas.image); // Show our image inside it.
 
 
             if (waitKey(1) != -1)
@@ -165,13 +201,16 @@ public:
     {
         imagePath = fs::absolute(imagePath);
         loadedImage = imread(imagePath.string(), IMREAD_COLOR); // Read the file
-        image = loadedImage;
-
         if (!loadedImage.data) // Check for invalid input
         {
             cout << "Could not open or find the image " << imagePath << std::endl;
             return -1;
         }
+
+        //canvas.image = loadedImage;
+
+        cv::Mat3b img(cv::Size(1200, 900));
+        canvas.create(img);
 
         return 0;
     }
@@ -184,7 +223,7 @@ static void onMouse(int event, int x, int y, int, void*)
         return;
     Point seed = Point(x, y);
 
-    the.image = the.loadedImage;
+    the.canvas.image = the.loadedImage;
 }
 
 
