@@ -38,6 +38,8 @@ public:
         cv::Mat1f global = cv::Mat1f::eye(3, 3);
         global.at<float>(0, 2) = 500;
         global.at<float>(1, 2) = 500;
+        global.at<float>(1, 1) = -1;
+
         cv::Mat1f m = global * m_accum;
 
         vector<cv::Point2f> v = { { {-20,0}, {20,0}, {20,100}, {-20,100} } };
@@ -87,6 +89,12 @@ public:
     }
 };
 
+#define Half12  0.94387431268
+float halfRoot(int n)
+{
+    return pow(0.5f, 1.0f / (float)n);
+}
+
 class The
 {
 public:
@@ -95,13 +103,18 @@ public:
 
     priority_queue<qnode, vector<qnode>, qnode::BiggestFirst> treeQueue;
 
+    int minNodesProcessedPerFrame = 1;
+
     void run()
     {
         qnode rootNode;
         treeQueue.push(rootNode);
 
-        qtransform  t1( 30, 0.94387431268, cv::Point2f(0, 0)),
-                    t2(-30, 0.707, cv::Point2f(0, 120));
+        //qtransform  t1( 30, halfRoot(6), cv::Point2f(0, 90)),
+        //            t2(-30, halfRoot(6), cv::Point2f(0, 60));
+
+        qtransform  t1( 90, halfRoot(2), cv::Point2f(0, 100)),
+                    t2(-90, halfRoot(2), cv::Point2f(0, 50));
 
         std::random_device rd;  //Will be used to obtain a seed for the random number engine
         std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
@@ -117,7 +130,7 @@ public:
             auto cutoff = treeQueue.top().det();
 
             int nodesProcessed = 0;
-            while (!treeQueue.empty() && nodesProcessed < 100)// treeQueue.top().det() >= cutoff)
+            while (!treeQueue.empty() && nodesProcessed < minNodesProcessedPerFrame)// treeQueue.top().det() >= cutoff)
             {
                 auto currentNode = treeQueue.top();
                 treeQueue.pop();
