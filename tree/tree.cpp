@@ -1,3 +1,4 @@
+#include "util.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc.hpp>
@@ -76,10 +77,7 @@ public:
 
     qtransform(double angle, double scale, cv::Point2f translate)
     {
-        m = Mat1f::eye(3, 3);
-        m(cv::Range(0, 2), cv::Range::all()) = cv::getRotationMatrix2D(Point2f(1.0, 0.0), angle, scale);
-        m.at<float>(0, 2) = translate.x;
-        m.at<float>(1, 2) = translate.y;
+        m = transform3x3::getRotationMatrix2D(Point2f(), angle, scale, translate.x, translate.y);
     }
 
     void transform(qnode const& in, qnode& out)
