@@ -175,6 +175,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="GridTree.h" />
+    <ClInclude Include="HexGridTree.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="tree.h" />
     <ClInclude Include="util.h" />

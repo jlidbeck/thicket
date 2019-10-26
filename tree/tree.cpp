@@ -1,4 +1,4 @@
-#include "tree.h"
+#include "HexGridTree.h"
 #include "util.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -331,7 +331,9 @@ public:
     cv::Mat loadedImage;
     qcanvas canvas;
 
-    qtree tree;
+    //qtree tree;
+    //GridTree tree;
+    HexGridTree tree;
 
     int minNodesProcessedPerFrame = 1;
     int maxNodesProcessedPerFrame = 64;
