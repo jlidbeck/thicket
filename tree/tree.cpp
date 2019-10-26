@@ -1,3 +1,4 @@
+#include "tree.h"
 #include "util.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -5,7 +6,6 @@
 #include <iostream>
 #include <filesystem>
 #include <random>
-#include <queue>
 #include <vector>
 
 namespace fs = std::filesystem;
@@ -13,13 +13,6 @@ namespace fs = std::filesystem;
 
 using std::cout;
 using std::endl;
-using std::vector;
-using std::priority_queue;
-
-using cv::Point2f;
-typedef cv::Matx<float, 3, 3> Matx33;
-typedef cv::Matx<float, 4, 1> Matx41;
-typedef cv::Matx<float, 4, 4> Matx44;
 
 
 class qcanvas
@@ -36,121 +29,24 @@ public:
         image = im;
     }
 
-    // sets global transform map to show -range .. range in each dimension
-    void setScaleToFit(int range)
-    {
-        if (image.empty()) throw std::exception("Image is empty");
-
-        float halfw = (float)(image.cols / 2);
-        float halfh = (float)(image.rows / 2);
-        float scale = std::min(halfw / range, halfh / range);
-
-        // scale, flip vertical, offset
-        globalTransform = Matx33(
-            scale,  0,     halfw,
-            0,     -scale, halfh,
-            0,      0,     1);
-    }
-
-    // sets global transform map to show -range .. range in each dimension
+    // sets global transform map to map provided domain to image, centered, vertically flipped
     void setScaleToFit(cv::Rect_<float> const &rect)
     {
         if (image.empty()) throw std::exception("Image is empty");
 
-		globalTransform = util::transform3x3::centerAndFit(rect, cv::Rect_<float>(0, 0, image.cols, image.rows));
+		globalTransform = util::transform3x3::centerAndFit(rect, cv::Rect_<float>(0, 0, image.cols, image.rows), 0.2f, true);
     }
 
 };
 
 
-class qtransform
-{
-public:
-    Matx33 m_transformMatrix;
-    Matx44 m_colorTransform;
-
-public:
-
-    qtransform(Matx33 const &cvMat = Matx33::eye(), Matx44 const &cvColor = Matx44::eye())
-    {
-        m_transformMatrix = cvMat;
-        m_colorTransform = cvColor;
-    }
-
-    template<typename _Tp>
-    qtransform(_Tp m00, _Tp m01, _Tp mtx, _Tp m10, _Tp m11, _Tp mty, Matx44 const &colorTransform)
-    {
-        m_transformMatrix = Matx33(m00, m01, mtx, m10, m11, mty, 0, 0, 1);
-        m_colorTransform = colorTransform;
-        //Matx44(
-        //0.1, 0.9, 0,   0,
-        //0,   0.1, 0.9, 0,
-        //0.9, 0,   0.1, 0,
-        //0,   0,   0,   1);
-    }
-
-    qtransform(double angle, double scale, cv::Point2f translate)
-    {
-        m_transformMatrix = util::transform3x3::getRotationMatrix2D(Point2f(), angle, scale, translate.x, translate.y);
-        m_colorTransform = m_colorTransform.eye();
-        m_colorTransform(2, 2) = 0.94;
-        m_colorTransform(1, 1) = 0.96;
-    }
-};
-
-
-class qnode
-{
-public:
-    double beginTime;
-    int generation;
-    Matx33 m_accum;
-    Matx41 m_color = Matx41(1,0,0,1);
-
-    qnode(double beginTime_ = 0) 
+qnode::qnode(double beginTime_) 
     {
         beginTime = beginTime_;
 
         m_accum = m_accum.eye();
         generation = 0;
     }
-
-    inline float det() const { return (m_accum(0, 0) * m_accum(0, 0) + m_accum(1, 0) * m_accum(1, 0)); }
-
-    bool operator!() const { return (det() < 1e-6); }
-
-    void draw(qcanvas &canvas, vector<cv::Point2f> const &points)
-    {
-        Matx33 m = canvas.globalTransform * m_accum;
-
-        vector<cv::Point2f> v;
-        cv::transform(points, v, m.get_minor<2, 3>(0,0));
-        vector<vector<cv::Point> > pts(1);
-        for (auto const& p : v)
-            pts[0].push_back(p*16);
-
-        cv::Scalar color(255.0 * m_color(0), 255.0 * m_color(1), 255.0 * m_color(2), 255.0 * m_color(3));
-        cv::Scalar lineColor = cv::Scalar(255, 255, 255, 255);
-        cv::fillPoly(canvas.image, pts, color, cv::LineTypes::LINE_AA, 4);
-        //cv::polylines(canvas.image, pts, true, lineColor, 1, cv::LineTypes::LINE_8);
-    }
-
-    struct EarliestFirst
-    {
-        bool operator()(qnode const& a, qnode const& b)
-        {
-            return (a.beginTime > b.beginTime);
-        }
-    };
-
-    struct BiggestFirst
-    {
-        bool operator()(qnode const& a, qnode const& b)
-        {
-            return (b.det() > a.det());
-        }
-    };
-};
 
 
 #define Half12  0.94387431268
@@ -163,202 +59,269 @@ float halfRoot(int n)
 }
 
 
-#define NUM_PRESETS 6
+#pragma region qnode tree
 
-class qtree
+#define NUM_PRESETS 8
+
+void qtree::create(int settings)
 {
-public:
-    vector<cv::Point2f> polygon;
-    vector<qtransform> transforms;
-    int offspringTemporalRandomness = 100;
+    m_boundingRect = cv::Rect_<float>(0, 0, 0, 0);
 
-    qnode rootNode;
+    rootNode.m_color = Matx41(0.5, 0.5, 0.5, 1);
+    rootNode.m_accum = Matx33::eye();
 
-    priority_queue<qnode, vector<qnode>, qnode::EarliestFirst> nodeQueue;
-
-
-    qtree()
+    switch (settings % NUM_PRESETS)
     {
-    }
+    case 0:
+        // H hourglass
+        polygon = { {
+            { .1f,-1}, { .08,0}, { .1, 1},
+            {-.1, 1}, {-.08,0}, {-.1,-1}
+            } };
 
-    void create(int settings)
-    {
-        switch (settings % NUM_PRESETS)
-        {
-        case 0:
-            // hourglass
-            polygon = { {
-                { .1,-1}, { .08,0}, { .1, 1}, 
-                {-.1, 1}, {-.08,0}, {-.1,-1}
-                } };
+        transforms = { {
+                qtransform(90, halfRoot(2), cv::Point2f(0,  0.9)),
+                qtransform(-90, halfRoot(2), cv::Point2f(0, -0.9))
+            } };
 
-            transforms = { {
-                    qtransform( 90, halfRoot(2), cv::Point2f(0,  0.9)),
-                    qtransform(-90, halfRoot(2), cv::Point2f(0, -0.9))
-                } };
+        rootNode.m_accum = util::transform3x3::getRotationMatrix2D(cv::Point2f(), 90, 1);
 
-            rootNode.m_accum = util::transform3x3::getRotationMatrix2D(cv::Point2f(), 90, 1);
-            break;
+        m_boundingRect = cv::Rect_<float>(-2, -2, 4, 4);
 
-        case 1:
-            polygon = { {
-                    // L
-                    {0,0},{0.62,0},{0.62,0.3},{0.3,0.3},{0.3,1},{0,1}
-                } };
-
-            transforms = { {
-                    qtransform(90, halfRoot(2), cv::Point2f(0,  0.9)),
-                    qtransform(-90, halfRoot(2), cv::Point2f(0, -0.9))
-                } };
-
-            rootNode.m_accum = util::transform3x3::getRotationMatrix2D(cv::Point2f(), 90, 1);
-            break;
-
-        case 2: // L reptiles
-            polygon = { {
-                    {0,0},{2,0},{2,0.8},{0.8,0.8},{0.8,2},{0,2}
-                } };
-            
-            transforms = { {
-                    qtransform(  0, 0.5, cv::Point2f(0, 0)),
-                    qtransform(  0, 0.5, cv::Point2f(0.5, 0.5)),
-                    qtransform(  0, 0.5, cv::Point2f(1, 1)),
-                    qtransform(-90, 0.5, cv::Point2f(2, 0)),
-                    qtransform( 90, 0.5, cv::Point2f(0, 2))
-                } };
-
-            rootNode.m_accum = util::transform3x3::getTranslate(-1, -1);
-            break;
-
-        case 3: // 1:r3:2 right triangle reptile
-        {
-            float r3 = sqrt(3.0);
-
-            polygon = { {
-                    {0.0f,0},{r3,0},{0,1}
-                } };
-
-            transforms = { {
-                    //          00  01   tx     10    11  ty
-                    qtransform(0.0f, r3/3, 0.0f,  r3/3,0.0f,0.0f,  util::colorSink(Matx41(9,0,3,1)*0.111f, 0.1f)),
-                    qtransform(-.5f,-r3/6, r3/2,  r3/6,-.5f, .5f,  util::colorSink(Matx41(3,0,1,1)*0.111f, 0.9f)),
-                    qtransform( .5f,-r3/6, r3/2, -r3/6,-.5f, .5f,  util::colorSink(Matx41(3,0,9,1)*0.111f, 0.1f))
-                } };
-
-            rootNode.m_color = Matx41(0.5, 0.5, 0.5, 1);
-            rootNode.m_accum = util::transform3x3::getTranslate(-1.0, -0.5);
-        }
         break;
 
-        case 4: // 1:2:r5 right triangle reptile
-            polygon = { {
-                    {0,0},{2,0},{0,1}
-                } };
+    case 1:
+        polygon = { {
+                // L
+                {0.0f,0},{0.62,0},{0.62f,0.3f},{0.3f,0.3f},{0.3f,1},{0,1}
+            } };
 
-            transforms = { {
-                    //          00  01  tx   10  11  ty
-                    qtransform(-.2,-.4, .4, -.4, .2, .8,  util::colorSink(Matx41(0,0,9,1)*0.111f, 0.1f)),
-                    qtransform( .4,-.2, .2, -.2,-.4, .4,  util::colorSink(Matx41(0,4,9,1)*0.111f, 0.1f)),
-                    qtransform( .4, .2, .2, -.2, .4, .4,  util::colorSink(Matx41(9,9,9,1)*0.111f, 0.1f)),
-                    qtransform(-.4,-.2,1.2,  .2,-.4, .4,  util::colorSink(Matx41(0,9,4,1)*0.111f, 0.1f)),
-                    qtransform( .4,-.2,1.2, -.2,-.4, .4,  util::colorSink(Matx41(0,0,0,1)*0.111f, 0.1f))
-                } };
+        transforms = { {
+                qtransform(90, halfRoot(2), cv::Point2f(0,  0.9)),
+                qtransform(-90, halfRoot(2), cv::Point2f(0, -0.9))
+            } };
 
-            rootNode.m_color = Matx41(0.5, 0.5, 0.5, 1);
-            rootNode.m_accum = util::transform3x3::getTranslate(-1.0, -0.5);
-            break;
+        rootNode.m_accum = util::transform3x3::getRotationMatrix2D(cv::Point2f(), 90, 1);
+        rootNode.m_accum = util::transform3x3::getRotationMatrix2D(cv::Point2f(4.0f, 12.0f), 150.0, 7.0, 15.0f, 27.0f);
+        break;
 
-        case 5: // 6-star
+    case 2: // L reptiles
+        polygon = { {
+                {0,0},{2,0},{2,0.8},{0.8,0.8},{0.8,2},{0,2}
+            } };
+
+        transforms = { {
+                qtransform(0, 0.5, cv::Point2f(0, 0)),
+                qtransform(0, 0.5, cv::Point2f(0.5, 0.5)),
+                qtransform(0, 0.5, cv::Point2f(1, 1)),
+                qtransform(-90, 0.5, cv::Point2f(2, 0)),
+                qtransform(90, 0.5, cv::Point2f(0, 2))
+            } };
+
+        rootNode.m_accum = util::transform3x3::getTranslate(-1, -1);
+        break;
+
+    case 3: // 1:r3:2 right triangle reptile
+    {
+        float r3 = sqrt(3.0f);
+
+        polygon = { {
+                {0.0f,0},{r3,0},{0,1}
+            } };
+
+        transforms = { {
+                //          00  01   tx     10    11  ty
+                qtransform(0.0f, r3 / 3, 0.0f,  r3 / 3,0.0f,0.0f,  util::colorSink(Matx41(9,0,3,1)*0.111f, 0.1f)),
+                qtransform(-.5f,-r3 / 6, r3 / 2,  r3 / 6,-.5f, .5f,  util::colorSink(Matx41(3,0,1,1)*0.111f, 0.9f)),
+                qtransform(.5f,-r3 / 6, r3 / 2, -r3 / 6,-.5f, .5f,  util::colorSink(Matx41(3,0,9,1)*0.111f, 0.1f))
+            } };
+
+    }
+    break;
+
+    case 4: // 1:2:r5 right triangle reptile
+        polygon = { {
+                {0,0},{2,0},{0,1}
+            } };
+
+        transforms = { {
+                //          00  01  tx   10  11  ty
+                qtransform(-.2,-.4, .4, -.4, .2, .8,  util::colorSink(Matx41(0,0,9,1)*0.111f, 0.1f)),
+                qtransform(.4,-.2, .2, -.2,-.4, .4,  util::colorSink(Matx41(0,4,9,1)*0.111f, 0.1f)),
+                qtransform(.4, .2, .2, -.2, .4, .4,  util::colorSink(Matx41(9,9,9,1)*0.111f, 0.1f)),
+                qtransform(-.4,-.2,1.2,  .2,-.4, .4,  util::colorSink(Matx41(0,9,4,1)*0.111f, 0.1f)),
+                qtransform(.4,-.2,1.2, -.2,-.4, .4,  util::colorSink(Matx41(0,0,0,1)*0.111f, 0.1f))
+            } };
+
+        break;
+
+    case 5: // 5-stars
+    {
+        polygon.clear();
+        float astep = 6.283f / 10.0f;
+        float angle = 0.0f;
+        for (int i = 0; i < 10; i += 2)
         {
-            polygon.clear();
-            double r32 = sqrt(3.0)*0.5;
-            float c[12] = {  1.0, r32, 0.5, 0.0,-0.5,-r32,
-                            -1.0,-r32,-0.5, 0.0, 0.5, r32 };
-            for (int i = 0; i < 12; i += 2)
-            {
-                polygon.push_back(     Point2f(c[i], c[(i + 3) % 12]));
-                polygon.push_back(0.1f*Point2f(c[(i + 1) % 12], c[(i + 4) % 12]));
-            }
-
-            float angle = 6.283f / 6.0f;
-            transforms = { {
-                    qtransform(util::transform3x3::getRotate(0 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(0,2,9,1)*0.111f, 0.7f)),
-                    qtransform(util::transform3x3::getRotate(1 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(0,4,9,1)*0.111f, 0.7f)),
-                    qtransform(util::transform3x3::getRotate(2 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(0,9,9,1)*0.111f, 0.7f)),
-                    qtransform(util::transform3x3::getRotate(3 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(6,0,9,1)*0.111f, 0.7f)),
-                    qtransform(util::transform3x3::getRotate(4 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(9,4,0,1)*0.111f, 0.7f)),
-                    qtransform(util::transform3x3::getRotate(5 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(2,0,9,1)*0.111f, 0.7f))
-                } };
-
-            rootNode.m_color = Matx41(1,1,1, 1);
-
-            break;
+            polygon.push_back(Point2f(sin(angle), cos(angle)));
+            angle += astep;
+            polygon.push_back(0.1f * Point2f(sin(angle), cos(angle)));
+            angle += astep;
         }
 
-        }   // switch (settings % NUM_PRESETS)
+        transforms = { {
+                qtransform(util::transform3x3::getRotate(1 * astep) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(0,2,9,1)*0.111f, 0.7f)),
+                qtransform(util::transform3x3::getRotate(3 * astep) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(0,4,9,1)*0.111f, 0.7f)),
+                qtransform(util::transform3x3::getRotate(5 * astep) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(0,9,9,1)*0.111f, 0.7f)),
+                qtransform(util::transform3x3::getRotate(7 * astep) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(6,0,9,1)*0.111f, 0.7f)),
+                qtransform(util::transform3x3::getRotate(9 * astep) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(9,4,0,1)*0.111f, 0.7f))
+            } };
 
-        offspringTemporalRandomness = 100;
+        rootNode.m_color = Matx41(0.5f, 0.75f, 1, 1);
 
-        if (settings >= NUM_PRESETS)
+        m_boundingRect = cv::Rect_<float>(-2, -2, 4, 4);
+
+        break;
+    }
+
+    case 6: // 6-stars
+    {
+        polygon.clear();
+        float r32 = sqrt(3.0f)*0.5;
+        float c[12] = { 1.0, r32, 0.5, 0.0,-0.5,-r32,
+                        -1.0,-r32,-0.5, 0.0, 0.5, r32 };
+        for (int i = 0; i < 12; i += 2)
         {
-            for (auto &t : transforms)
-            {
-                t.m_colorTransform = util::colorSink(Matx41(util::r(), util::r(), util::r(), 1), util::r());
-            }
-
-            offspringTemporalRandomness = rand() % 200;
+            polygon.push_back(Point2f(c[i], c[(i + 3) % 12]));
+            polygon.push_back(0.1f * Point2f(c[(i + 1) % 12], c[(i + 4) % 12]));
         }
 
-        cout << "Settings changed: " << transforms.size() << " transforms, offspringTemporalRandomness: " << offspringTemporalRandomness << endl;
+        float angle = 6.283f / 6.0f;
+        transforms = { {
+                qtransform(util::transform3x3::getRotate(0 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(0,2,9,1)*0.111f, 0.7f)),
+                qtransform(util::transform3x3::getRotate(1 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(0,4,9,1)*0.111f, 0.7f)),
+                qtransform(util::transform3x3::getRotate(2 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(0,9,9,1)*0.111f, 0.7f)),
+                qtransform(util::transform3x3::getRotate(3 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(6,0,9,1)*0.111f, 0.7f)),
+                qtransform(util::transform3x3::getRotate(4 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(9,4,0,1)*0.111f, 0.7f)),
+                qtransform(util::transform3x3::getRotate(5 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(2,0,9,1)*0.111f, 0.7f))
+            } };
 
-        // clear and initialize the queue with the seed
+        rootNode.m_color = Matx41(1, 1, 1, 1);
 
-        while (!nodeQueue.empty()) nodeQueue.pop();
-        nodeQueue.push(rootNode);
+        m_boundingRect = cv::Rect_<float>(-2, -2, 4, 4);
+
+        break;
     }
 
-
-    virtual cv::Rect_<float> getBoundingRect() const
+    case 7: // irregular quad
     {
-        return util::getBoundingRect(polygon);
+        polygon = { {
+                {0,0},{1,0},{1.0f,0.9f},{0.1f,0.8f}
+            } };
+
+        transforms = { {
+                qtransform(util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[2], polygon[1]), util::colorSink(Matx41(0,0,9,1)*0.111f, 0.2f)),
+                qtransform(util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[3], polygon[2]), util::colorSink(Matx41(0,9,0,1)*0.111f, 0.2f)),
+                qtransform(util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[0], polygon[3]), util::colorSink(Matx41(9,0,0,1)*0.111f, 0.2f))
+            } };
+
+        rootNode.m_color = Matx41(1, 1, 1, 1);
+
+        m_boundingRect = cv::Rect_<float>(-3, -3, 7, 7);
+
+        break;
     }
 
+    }   // switch (settings % NUM_PRESETS)
 
-    bool process()
+    offspringTemporalRandomness = 1000;
+
+    if (settings >= NUM_PRESETS)
     {
-        auto currentNode = nodeQueue.top();
-        nodeQueue.pop();
-
-        double miniTimeStep = 1.0 / transforms.size();
-
-        for (auto const &t : transforms)
+        for (auto &t : transforms)
         {
-            qnode child;
-            beget(currentNode, t, child);
-            child.beginTime += miniTimeStep;
-
-            if (!!child) nodeQueue.push(child);
+            t.colorTransform = util::colorSink(util::randomColor(), util::r());
         }
 
-        return true;
+        offspringTemporalRandomness = 1 + rand() % 500;
     }
 
-    void beget(qnode const & parent, qtransform const & t, qnode & child)
+    cout << "Settings changed: " << transforms.size() << " transforms, offspringTemporalRandomness: " << offspringTemporalRandomness << endl;
+
+    // clear and initialize the queue with the seed
+
+    util::clear(nodeQueue);
+    nodeQueue.push(rootNode);
+}
+
+
+cv::Rect_<float> qtree::getBoundingRect() const
+{
+    if (m_boundingRect.width == 0)
     {
-        child.generation = parent.generation + 1;
-        child.beginTime = parent.beginTime + 1 + rand() % offspringTemporalRandomness;
-
-        child.m_accum = parent.m_accum * t.m_transformMatrix;
-
-        auto m = t.m_colorTransform * parent.m_color;
-        child.m_color = m.col(0);
+        vector<cv::Point2f> v;
+        rootNode.getPolyPoints(polygon, v);
+        return util::getBoundingRect(v);
     }
 
-};
+    return m_boundingRect;
+}
+
+//  process one node
+bool qtree::process()
+{
+    auto currentNode = nodeQueue.top();
+    nodeQueue.pop();
+
+    if (!isViable(currentNode))
+        return false;
+
+    addNode(currentNode);
+
+    // create a child node for each available transform.
+    // all child nodes are added to the queue, even if not viable.
+    for (auto const &t : transforms)
+    {
+        qnode child;
+        beget(currentNode, t, child);
+        nodeQueue.push(child);
+    }
+
+    return true;
+}
+
+//  Generate a child node from parent
+void qtree::beget(qnode const & parent, qtransform const & t, qnode & child)
+{
+    child.generation = parent.generation + 1;
+    child.beginTime = parent.beginTime + 1 + rand() % offspringTemporalRandomness;
+
+    child.m_accum = parent.m_accum * t.transformMatrix;
+
+    auto m = t.colorTransform * parent.m_color;
+    child.m_color = m.col(0);
+}
+
+void qtree::drawNode(qcanvas &canvas, qnode const &node)
+{
+    if (!isViable(node))
+        return;
+
+    Matx33 m = canvas.globalTransform * node.m_accum;
+
+    vector<cv::Point2f> v;
+    cv::transform(polygon, v, m.get_minor<2, 3>(0, 0));
+    vector<vector<cv::Point> > pts(1);
+    for (auto const& p : v)
+        pts[0].push_back(p * 16);
+
+    cv::Scalar color = util::toColor(node.m_color);
+    cv::Scalar lineColor = cv::Scalar(255, 255, 255, 255);
+    cv::fillPoly(canvas.image, pts, color, cv::LineTypes::LINE_AA, 4);
+    //cv::polylines(canvas.image, pts, true, lineColor, 1, cv::LineTypes::LINE_8);
+}
 
 
-
-
+#pragma endregion
 
 
 
@@ -367,16 +330,20 @@ class The
 public:
     cv::Mat loadedImage;
     qcanvas canvas;
+
     qtree tree;
 
-    int minNodesProcessedPerFrame = 100;
+    int minNodesProcessedPerFrame = 1;
     int maxNodesProcessedPerFrame = 64;
+
+    int presetIndex = 7;
+
 
     void run()
     {
-        tree.create(5);
+        tree.create(presetIndex);
 
-        cv::Mat3b img(cv::Size(2000, 1000));
+        cv::Mat3b img(cv::Size(900, 900));
         img = 0;
 
         canvas.create(img);
@@ -395,27 +362,30 @@ public:
 
         while (1)
         {
-            int time = 0;
+            double time = 0;
 
             while (!tree.nodeQueue.empty())
             {
                 ++time;
 
-                auto cutoff = tree.nodeQueue.top().det();
-
-                int nodesProcessed = 0;
-                while (!tree.nodeQueue.empty() && //nodesProcessed < minNodesProcessedPerFrame)
-                                             //tree.nodeQueue.top().det() >= cutoff && nodesProcessed < maxNodesProcessedPerFrame)
-                    tree.nodeQueue.top().beginTime <= time && nodesProcessed < maxNodesProcessedPerFrame)
+                int nodesProcessed = 0, nodesAdded = 0;
+                while (!tree.nodeQueue.empty() 
+                        && nodesProcessed < maxNodesProcessedPerFrame
+                        //&& tree.nodeQueue.top().det() >= cutoff 
+                        && (nodesProcessed < minNodesProcessedPerFrame || tree.nodeQueue.top().beginTime <= time)
+                    )
                 {
-                    // todo: draw all nodes
                     auto currentNode = tree.nodeQueue.top();
-                    currentNode.draw(canvas, tree.polygon);
 
-                    if (!tree.process()) break;
+                    tree.drawNode(canvas, currentNode);
 
-                    ++nodesProcessed;
+                    nodesProcessed++;
+                    nodesAdded += tree.process();
+                    time = currentNode.beginTime + 1.0;
                 }
+
+                // adjust scaling to fit.. can't do this yet b/c tree can't be redrawn
+                //canvas.setScaleToFit(tree.getBoundingRect());
 
                 // fade
                 //canvas.image *= 0.99;
@@ -460,9 +430,26 @@ public:
 
         case 'r':
         {
-            static int i = 0;
             canvas.image = 0;
-            tree.create((++i) % (NUM_PRESETS*2));
+            presetIndex = (++presetIndex) % (NUM_PRESETS * 2);
+            tree.create(presetIndex);
+            canvas.setScaleToFit(tree.getBoundingRect());
+            return true;
+        }
+
+        case '.':
+        {
+            maxNodesProcessedPerFrame = 1;
+            break;
+        }
+
+        case ' ':
+        {
+            // restart with current settings
+            maxNodesProcessedPerFrame = 64;
+            canvas.image = 0;
+            presetIndex = (presetIndex + NUM_PRESETS) % (NUM_PRESETS * 2);
+            tree.create(presetIndex);
             canvas.setScaleToFit(tree.getBoundingRect());
             return true;
         }
@@ -471,6 +458,8 @@ public:
         default:
             return false;
         }
+
+        return false;
     }
 
     int load(fs::path imagePath)
@@ -515,7 +504,7 @@ int main( int argc, char** argv )
 
 
     //try {
-        the.load(argv[1]);
+        //the.load(argv[1]);
         the.run();
     //}
     //catch (cv::Exception ex)

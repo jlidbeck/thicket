@@ -176,6 +176,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="tree.h" />
     <ClInclude Include="util.h" />
   </ItemGroup>
   <ItemGroup>
