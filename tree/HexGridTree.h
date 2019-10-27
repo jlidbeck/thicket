@@ -21,11 +21,13 @@ namespace std
 
 class HexGridTree : public GridTree
 {
-    std::unordered_set<Point2f> m_covered;
+    cv::Mat1b m_field;
+    mutable cv::Mat1b m_fieldLayer;
+    Matx33 m_fieldTransform;
 
     int polygonSides = 5;
     int maxRadius = 10;
-
+    int fieldResolution = 10;
 
 public:
 
@@ -40,7 +42,7 @@ public:
 
         if (randomizeSettings)
         {
-            maxRadius = 5 + rand() % 20;
+            maxRadius = 5 + rand() % 40;
             polygonSides = (randomizeSettings%6)+3;
             
             for (auto &t : transforms)
@@ -52,7 +54,10 @@ public:
         }
 
 
-        m_covered.clear();
+        m_field.create(maxRadius*2*fieldResolution, maxRadius*2*fieldResolution);
+        m_field = 0;
+        m_field.copyTo(m_fieldLayer);
+        m_fieldTransform = util::transform3x3::getScaleTranslate(fieldResolution, maxRadius*fieldResolution, maxRadius*fieldResolution);
 
         // create regular polygon
         polygon.clear();
@@ -104,35 +109,38 @@ public:
         if (!node) 
             return false;
 
-        auto center = getNodeCentroid(node);
+        cv::Point2f center(node.m_accum(0, 2), node.m_accum(1, 2));
 
         if (center.x < -maxRadius || center.x>maxRadius || center.y < -maxRadius || center.y>maxRadius) 
             return false;
 
-        if (m_covered.find(center) == m_covered.end())
-            return true;
-
-        //cout << "**collision (" << center.x << ", " << center.y << ")\n";
-        return false;
+        drawField(node);
+        cv::Mat andmat;
+        cv::bitwise_and(m_field, m_fieldLayer, andmat);
+        return(!cv::countNonZero(andmat));
     }
 
     // add node to hash, data structures, etc.
     virtual void addNode(qnode &currentNode) override
     {
         // take up space
-        auto center = getNodeCentroid(currentNode);
-        m_covered.insert(center);
+        cv::bitwise_or(m_field, m_fieldLayer, m_field);
         //cout << "Space filled: (" << center.x << ", " << center.y << ") :" << m_covered.size() << endl;
     }
 
-    cv::Point2f getNodeCentroid(qnode const &node) const
+    void drawField(qnode const &node) const
     {
-        // since tile is centered locally at origin, use the transform matrix
-        cv::Point2f pt(node.m_accum(0, 2), node.m_accum(1, 2));
-        // assume each node is centered near a unique integer grid point
-        float ds = 2.0f;
-        cv::Point center = cv::Point(pt * ds);
-        return cv::Point2f(center) / ds;
+        Matx33 m = m_fieldTransform * node.m_accum;
+
+        vector<cv::Point2f> v;
+        cv::transform(polygon, v, m.get_minor<2, 3>(0, 0));
+        vector<vector<cv::Point> > pts(1);
+        for (auto const& p : v)
+            pts[0].push_back(p);
+
+        m_fieldLayer = 0;
+        cv::fillPoly(m_fieldLayer, pts, cv::Scalar(255), cv::LineTypes::LINE_8);
+        cv::polylines(m_fieldLayer, pts, true, cv::Scalar(0), 1);
     }
 
 };
