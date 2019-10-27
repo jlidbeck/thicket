@@ -2,6 +2,7 @@
 
 
 #include "GridTree.h"
+#include <opencv2/imgproc.hpp>
 
 
 namespace std
@@ -22,7 +23,8 @@ class HexGridTree : public GridTree
 {
     std::unordered_set<Point2f> m_covered;
 
-    int maxRadius = 50;
+    int polygonSides = 5;
+    int maxRadius = 10;
 
 
 public:
@@ -33,30 +35,14 @@ public:
 
     void create(int randomizeSettings) override
     {
-        m_covered.clear();
-        polygon.clear();
-        for (int i = 0; i < 6; i++)
-        {
-            float angle = i * 6.283 / 6;
-            polygon.push_back(Point2f(cos(angle), sin(angle)));
-        }
-
-        // edge 1-2 is up
-        transforms = { {
-            qtransform(util::transform3x3::getEdgeMap(polygon[4], polygon[5], polygon[0], polygon[5]), util::colorSink(Matx41(9,0,4,1)*0.111f, 0.7f)),
-            qtransform(util::transform3x3::getEdgeMap(polygon[4], polygon[5], polygon[1], polygon[0]), util::colorSink(Matx41(9,4,0,1)*0.111f, 0.7f)),
-            qtransform(util::transform3x3::getEdgeMap(polygon[4], polygon[5], polygon[2], polygon[1]), util::colorSink(Matx41(9,9,9,1)*0.111f, 0.5f)),
-            qtransform(util::transform3x3::getEdgeMap(polygon[4], polygon[5], polygon[3], polygon[2]), util::colorSink(Matx41(0,4,9,1)*0.111f, 0.7f)),
-            qtransform(util::transform3x3::getEdgeMap(polygon[4], polygon[5], polygon[4], polygon[3]), util::colorSink(Matx41(4,0,9,1)*0.111f, 0.7f))
-        } };
-
-        rootNode.m_color = Matx41(1, 1, 1, 1);
-
 
         offspringTemporalRandomness = 1000;
 
         if (randomizeSettings)
         {
+            maxRadius = 5 + rand() % 20;
+            polygonSides = (randomizeSettings%6)+3;
+            
             for (auto &t : transforms)
             {
                 t.colorTransform = util::colorSink(util::randomColor(), util::r());
@@ -64,6 +50,35 @@ public:
 
             offspringTemporalRandomness = 1 + rand() % 200;
         }
+
+
+        m_covered.clear();
+
+        // create regular polygon
+        polygon.clear();
+        float angle = -6.283 / (polygonSides * 2);
+        for (int i = 0; i < polygonSides; i++)
+        {
+            polygon.push_back(Point2f(sin(angle), cos(angle)));
+            angle += 6.283 / polygonSides;
+        }
+
+        // add edge transforms to map edge 0 to all other edges
+        transforms.clear();
+        for (int i = 1; i < polygonSides; ++i)
+        {
+            Matx41 hsv((float)i/(float)polygonSides, 1.0, 0.5), bgr(1.0, 0.5, 0.0);
+            //cv::cvtColor(hsv, bgr, cv::ColorConversionCodes::COLOR_HSV2BGR);
+            bgr = util::randomColor();
+            transforms.push_back(
+                qtransform(
+                    util::transform3x3::getEdgeMap(polygon[polygonSides - 1], polygon[0], polygon[i], polygon[i - 1]),
+                    util::colorSink(bgr, 0.7f))
+            );
+        }
+
+        rootNode.m_color = Matx41(1, 1, 1, 1);
+
 
         cout << "Settings changed: " << transforms.size() << " transforms, offspringTemporalRandomness: " << offspringTemporalRandomness << endl;
 
@@ -107,16 +122,17 @@ public:
         // take up space
         auto center = getNodeCentroid(currentNode);
         m_covered.insert(center);
-        cout << "Space filled: (" << center.x << ", " << center.y << ") :" << m_covered.size() << endl;
+        //cout << "Space filled: (" << center.x << ", " << center.y << ") :" << m_covered.size() << endl;
     }
 
     cv::Point2f getNodeCentroid(qnode const &node) const
     {
+        // since tile is centered locally at origin, use the transform matrix
+        cv::Point2f pt(node.m_accum(0, 2), node.m_accum(1, 2));
         // assume each node is centered near a unique integer grid point
-        vector<cv::Point2f> pts;
-        node.getPolyPoints(polygon, pts);
-        cv::Point center = cv::Point(((pts[0] + pts[3]) / 2.0f ) * 100.0f);
-        return cv::Point2f(center) / 100.0f;
+        float ds = 2.0f;
+        cv::Point center = cv::Point(pt * ds);
+        return cv::Point2f(center) / ds;
     }
 
 };
