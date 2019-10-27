@@ -317,7 +317,7 @@ void qtree::drawNode(qcanvas &canvas, qnode const &node)
     cv::Scalar color = util::toColor(node.m_color);
     cv::Scalar lineColor = cv::Scalar(255, 255, 255, 255);
     cv::fillPoly(canvas.image, pts, color, cv::LineTypes::LINE_AA, 4);
-    //cv::polylines(canvas.image, pts, true, lineColor, 1, cv::LineTypes::LINE_8);
+    cv::polylines(canvas.image, pts, true, lineColor, 1, cv::LineTypes::LINE_AA, 4);
 }
 
 
@@ -370,7 +370,7 @@ public:
             {
                 ++time;
 
-                int nodesProcessed = 0, nodesAdded = 0;
+                int nodesProcessed = 0;
                 while (!tree.nodeQueue.empty() 
                         && nodesProcessed < maxNodesProcessedPerFrame
                         //&& tree.nodeQueue.top().det() >= cutoff 
@@ -378,11 +378,17 @@ public:
                     )
                 {
                     auto currentNode = tree.nodeQueue.top();
+                    if (!tree.isViable(currentNode))
+                    {
+                        tree.nodeQueue.pop();
+                        currentNode = tree.nodeQueue.top();
+                        continue;
+                    }
 
                     tree.drawNode(canvas, currentNode);
 
                     nodesProcessed++;
-                    nodesAdded += tree.process();
+                    tree.process();
                     time = currentNode.beginTime + 1.0;
                 }
 

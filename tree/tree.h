@@ -25,9 +25,9 @@ public:
 
 public:
 
-    qtransform(Matx33 const &cvMat = Matx33::eye(), Matx44 const &colorTransform_ = Matx44::eye())
+    qtransform(Matx33 const &transformMatrix_ = Matx33::eye(), Matx44 const &colorTransform_ = Matx44::eye())
     {
-        transformMatrix = cvMat;
+        transformMatrix = transformMatrix_;
         colorTransform = colorTransform_;
     }
 
@@ -87,13 +87,12 @@ public:
 };
 
 
-
 class qtree
 {
 public:
     qnode rootNode;
     std::vector<qtransform> transforms;
-    std::priority_queue<qnode, std::vector<qnode>, qnode::EarliestFirst> nodeQueue;
+    std::priority_queue<qnode, std::deque<qnode>, qnode::EarliestFirst> nodeQueue;
 
     std::vector<cv::Point2f> polygon;
     int offspringTemporalRandomness = 100;
