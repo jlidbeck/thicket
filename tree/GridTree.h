@@ -4,7 +4,6 @@
 #include "tree.h"
 #include "util.h"
 #include <random>
-#include <queue>
 #include <vector>
 #include <iostream>
 #include <unordered_set>
@@ -24,23 +23,36 @@ namespace std
             return (in.x << (4*sizeof(int))) ^ (in.y);
         }
     };
+    template<>
+    struct hash<Point2f>
+    {
+        std::size_t operator()(Point2f const &in) const
+        {
+            int x = (int)(0.5f + 100.0f*in.x);
+            int y = (int)(0.5f + 100.0f*in.y);
+            return (x << (4*sizeof(int))) ^ y;
+        }
+    };
 }
 
 class GridTree : public qtree
 {
     std::unordered_set<cv::Point> m_covered;
 
-    const int MAXRAD = 100;
+    int maxRadius = 100;
 
 
 public:
 
-    GridTree()
-    {
-    }
+    GridTree() { }
+	
 
-    void create(int settings) override
+    void create(int randomizeSettings) override
     {
+        offspringTemporalRandomness = 1000;
+
+        m_covered.clear();
+
         polygon = { {
                 {0,0},{1,0},{1,1},{0,1}
             } };
@@ -55,8 +67,6 @@ public:
         rootNode.m_accum = util::transform3x3::getTranslate(-0.5f, -0.5f);
         rootNode.m_color = Matx41(1, 1, 1, 1);
 
-
-        offspringTemporalRandomness = 1000;
 
         //if (settings)
         //{
@@ -83,27 +93,18 @@ public:
             //rootNode.getPolyPoints(polygon, v);
             //return util::getBoundingRect(v);
 
-        float r = MAXRAD;
+        float r = maxRadius;
         return cv::Rect_<float>(-r, -r, 2 * r, 2 * r);
     }
 
-    // add node to hash, data structures, etc.
-    virtual void addNode(qnode &currentNode)
-    {
-        // take up space
-        auto center = getNodeKey(currentNode);
-        m_covered.insert(center);
-        //cout << "Space filled: (" << center.x << ", " << center.y << ") :" << m_covered.size() << endl;
-    }
-
-    virtual bool isViable(qnode const & node) const override
+    virtual bool isViable(qnode const &node) const override
     {
         if (!node) 
             return false;
 
         cv::Point center = getNodeKey(node);
 
-        if (center.x < -MAXRAD || center.x>MAXRAD || center.y < -MAXRAD || center.y>MAXRAD) 
+        if (center.x < -maxRadius || center.x>maxRadius || center.y < -maxRadius || center.y>maxRadius) 
             return false;
 
         if (m_covered.find(center) == m_covered.end())
@@ -111,6 +112,15 @@ public:
 
         //cout << "**collision (" << center.x << ", " << center.y << ")\n";
         return false;
+    }
+
+    // add node to hash, data structures, etc.
+    virtual void addNode(qnode &currentNode) override
+    {
+        // take up space
+        auto center = getNodeKey(currentNode);
+        m_covered.insert(center);
+        //cout << "Space filled: (" << center.x << ", " << center.y << ") :" << m_covered.size() << endl;
     }
 
     private:

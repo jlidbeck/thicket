@@ -1,4 +1,5 @@
 #include "HexGridTree.h"
+#include "GridTree.h"
 #include "util.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -333,7 +334,8 @@ public:
 
     //qtree tree;
     //GridTree tree;
-    HexGridTree tree;
+    //SelfAvoidantPolygonTree tree;
+    BlockTree tree;
 
     int minNodesProcessedPerFrame = 1;
     int maxNodesProcessedPerFrame = 64;
@@ -381,7 +383,6 @@ public:
                     if (!tree.isViable(currentNode))
                     {
                         tree.nodeQueue.pop();
-                        currentNode = tree.nodeQueue.top();
                         continue;
                     }
 
