@@ -7,6 +7,7 @@
 #include <vector>
 #include <iostream>
 #include <opencv2/imgproc.hpp>
+#include <array>
 
 
 using std::cout;
@@ -77,15 +78,24 @@ public:
             );
         }
 
-        rootNode.m_color = Matx41(1, 1, 1, 1);
-
 
         cout << "Settings changed: " << transforms.size() << " transforms, offspringTemporalRandomness: " << offspringTemporalRandomness << endl;
 
         // clear and initialize the queue with the seed
 
+        qnode rootNode;
+        createRootNode(rootNode);
+
         util::clear(nodeQueue);
         nodeQueue.push(rootNode);
+    }
+
+    virtual void createRootNode(qnode & rootNode)
+    {
+        rootNode.beginTime = 0;
+        rootNode.generation = 0;
+        rootNode.globalTransform = rootNode.globalTransform.eye();
+        rootNode.color = cv::Scalar(1, 1, 1, 1);
     }
 
 
@@ -106,7 +116,7 @@ public:
 
         // since the node polygon is centered at its local origin, its global
 		// centroid is simply the translation from its transform matrix
-        cv::Matx<float, 3, 1> center(node.m_accum(0, 2), node.m_accum(1, 2), 1.0f);
+        cv::Matx<float, 3, 1> center(node.globalTransform(0, 2), node.globalTransform(1, 2), 1.0f);
 
         if (center(0) < -maxRadius || center(0)>maxRadius || center(1) < -maxRadius || center(1)>maxRadius) 
             return false;
@@ -125,7 +135,7 @@ public:
     //  draw node on field layer to detect collisions
     void drawField(qnode const &node) const
     {
-        Matx33 m = m_fieldTransform * node.m_accum;
+        Matx33 m = m_fieldTransform * node.globalTransform;
 
         vector<cv::Point2f> v;
         cv::transform(polygon, v, m.get_minor<2, 3>(0, 0));
@@ -148,8 +158,11 @@ public:
 };
 
 
-class BlockTree : public SelfAvoidantPolygonTree
+class ScaledPolygonTree : public SelfAvoidantPolygonTree
 {
+    double m_ratio;
+    bool m_ambidextrous;
+
 public:
     virtual void setDefaultSettings(int randomize) override
     {
@@ -157,6 +170,17 @@ public:
 
         fieldResolution = 200;
         maxRadius = 3.5;
+        
+        std::array<float, 5> ratioPresets = { {
+            (sqrt(5.0f) - 1.0f) / 2.0f,        // phi
+            0.5f,
+            1.0f / 3.0f,
+            1.0f / sqrt(2.0f),
+            (sqrt(3.0f) - 1.0f) / 2.0f
+        } };
+
+        m_ratio = ratioPresets[randomize%ratioPresets.size()];
+        m_ambidextrous = (randomize % 2);
     }
 
     virtual void create(int randomizeSettings) override
@@ -166,28 +190,86 @@ public:
 
         // override edge transforms
         transforms.clear();
-        const float phi = (sqrt(5.0f) - 1.0f) / 2.0f;
         for (int i = 1; i < polygon.size(); ++i)
         {
-            auto edgePt1 = phi * polygon[i - 1] + (1.0f - phi)*polygon[i];
-            auto edgePt2 = phi * polygon[i] + (1.0f - phi)*polygon[i - 1];
+            auto edgePt1 = m_ratio * polygon[i - 1] + (1.0f - m_ratio)*polygon[i    ];
             transforms.push_back(
                 qtransform(
                     util::transform3x3::getEdgeMap(polygon[polygon.size() - 1], polygon[0], polygon[i], edgePt1),
                     util::colorSink(util::randomColor(), 0.5f))
             );
+
+            if (m_ambidextrous)
+            {
+                auto edgePt2 = m_ratio * polygon[i    ] + (1.0f - m_ratio)*polygon[i - 1];
+                transforms.push_back(
+                    qtransform(
+                        util::transform3x3::getEdgeMap(polygon[polygon.size() - 1], polygon[0], edgePt2, polygon[i - 1]),
+                        util::colorSink(util::randomColor(), 0.5f))
+                );
+            }
+        }
+
+        cout << "Settings changed: polygon:"<<polygon.size()<<" transforms:" << transforms.size() 
+            << " offspringTemporalRandomness: " << offspringTemporalRandomness << endl;
+    }
+
+};
+
+
+class TrapezoidTree : public SelfAvoidantPolygonTree
+{
+public:
+    virtual void setDefaultSettings(int randomize) override
+    {
+        SelfAvoidantPolygonTree::setDefaultSettings(randomize);
+
+        fieldResolution = 200;
+        maxRadius = 20.0;
+        offspringTemporalRandomness = 10;
+    }
+
+    virtual void create(int randomizeSettings) override
+    {
+        SelfAvoidantPolygonTree::create(randomizeSettings);
+
+        // override polygon
+        polygon = { { { -0.5f, -0.5f}, {0.5f, -0.5f}, {0.4f, 0.4f}, {-0.5f, 0.45f} } };
+
+        float angle = 6.283f / 24.0f;
+        float r = 1.0f / angle;
+        polygon = { { {r - 1,0}, {r,0}, {r*cos(angle),r*sin(angle)}, {(r - 1)*cos(angle),(r - 1)*sin(angle)} } };
+
+        // override edge transforms
+        transforms.clear();
+        for (int i = 0; i < polygon.size(); ++i)
+        {
             transforms.push_back(
                 qtransform(
-                    util::transform3x3::getEdgeMap(polygon[polygon.size() - 1], polygon[0], edgePt2, polygon[i - 1]),
+                    util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[(i+1)%polygon.size()], polygon[i]),
                     util::colorSink(util::randomColor(), 0.5f))
             );
         }
 
-        rootNode.m_color = Matx41(1, 1, 1, 1);
+        transforms[0].gestation = 1111.1;
+        transforms[1].gestation = 22.2;
+        transforms[2].gestation = 1.0;
+        transforms[3].gestation = 3.3;
+
+        transforms[0].colorTransform = util::colorSink(1.0f,1.0f,1.0f, 0.5f);
+        transforms[1].colorTransform = util::colorSink(0.0f,0.5f,0.0f, 0.8f);
+        transforms[2].colorTransform = util::colorSink(0.5f,1.0f,1.0f, 0.3f);
+        transforms[3].colorTransform = util::colorSink(0.9f,0.5f,0.0f, 0.8f);
 
 
-        cout << "Settings changed: polygon:"<<polygon.size()<<" transforms:" << transforms.size() 
+
+        cout << "Settings changed: TrapezoidTree:" << polygon.size() << " transforms:" << transforms.size()
             << " offspringTemporalRandomness: " << offspringTemporalRandomness << endl;
+    }
+
+    virtual void createRootNode(qnode & rootNode) override
+    {
+        rootNode.color = cv::Scalar(0.2, 0.5, 0, 1);
     }
 
 };

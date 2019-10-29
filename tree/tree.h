@@ -22,13 +22,15 @@ class qtransform
 public:
     Matx33 transformMatrix;
     Matx44 colorTransform;
+    double gestation;
 
 public:
 
-    qtransform(Matx33 const &transformMatrix_ = Matx33::eye(), Matx44 const &colorTransform_ = Matx44::eye())
+    qtransform(Matx33 const &transformMatrix_ = Matx33::eye(), Matx44 const &colorTransform_ = Matx44::eye(), double gestation_ = 1.0)
     {
         transformMatrix = transformMatrix_;
         colorTransform = colorTransform_;
+        gestation = gestation_;
     }
 
     template<typename _Tp>
@@ -36,6 +38,7 @@ public:
     {
         transformMatrix = Matx33(m00, m01, mtx, m10, m11, mty, 0, 0, 1);
         colorTransform = colorTransform_;
+        gestation = 1.0;
     }
 
     qtransform(double angle, double scale, cv::Point2f translate)
@@ -44,6 +47,7 @@ public:
         colorTransform = colorTransform.eye();
         colorTransform(2, 2) = 0.94f;
         colorTransform(1, 1) = 0.96f;
+        gestation = 1.0;
     }
 };
 
@@ -51,23 +55,21 @@ public:
 class qnode
 {
 public:
-    double beginTime;
-    int generation;
-    Matx33 m_accum;
-    Matx41 m_color = Matx41(1, 0, 0, 1);
+    double      beginTime;
+    int         generation;
+    Matx33      globalTransform;
+    cv::Scalar  color = cv::Scalar(1, 0, 0, 1);
 
     qnode(double beginTime_ = 0);
 
-    inline float det() const { return (m_accum(0, 0) * m_accum(0, 0) + m_accum(1, 0) * m_accum(1, 0)); }
+    inline float det() const { return (globalTransform(0, 0) * globalTransform(0, 0) + globalTransform(1, 0) * globalTransform(1, 0)); }
 
     inline bool operator!() const { return (det() < 1e-6); }
 
     void getPolyPoints(std::vector<cv::Point2f> const &points, std::vector<cv::Point2f> &transformedPoints) const
     {
-        cv::transform(points, transformedPoints, m_accum.get_minor<2, 3>(0, 0));
+        cv::transform(points, transformedPoints, globalTransform.get_minor<2, 3>(0, 0));
     }
-
-    void draw(qcanvas &canvas, std::vector<cv::Point2f> const &points) const;
 
     struct EarliestFirst
     {
@@ -90,20 +92,16 @@ public:
 class qtree
 {
 public:
-    qnode rootNode;
     std::vector<qtransform> transforms;
     std::priority_queue<qnode, std::deque<qnode>, qnode::EarliestFirst> nodeQueue;
 
     std::vector<cv::Point2f> polygon;
-    int offspringTemporalRandomness = 100;
-
-private:
-    cv::Rect_<float> m_boundingRect;
+    double offspringTemporalRandomness = 100.0;
 
 public:
     qtree() {}
 
-    virtual void create(int settings);
+    virtual void create(int settings) = 0;
 
     // process the next node in the queue
     virtual bool process();
@@ -117,6 +115,8 @@ public:
     // generate a child node from a parent
     virtual void beget(qnode const & parent, qtransform const & t, qnode & child);
 
-    virtual cv::Rect_<float> getBoundingRect() const;
+    virtual cv::Rect_<float> getBoundingRect() const = 0;
     virtual void drawNode(qcanvas &canvas, qnode const &node);
 };
+
+

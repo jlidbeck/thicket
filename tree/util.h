@@ -163,6 +163,27 @@ namespace util
             0, 0, 0, 1);
     }
 
+    // since Scalar is derived from Matx<_tp, 4, 1>, this extra polymorphism shouldn't be necessary
+    template<typename _Tp>
+    cv::Matx<_Tp, 4, 4> colorSink(cv::Scalar_<_Tp> const &color, _Tp a)
+    {
+        return cv::Matx<_Tp, 4, 4>(
+            1 - a, 0, 0, a*color(0),
+            0, 1 - a, 0, a*color(1),
+            0, 0, 1 - a, a*color(2),
+            0, 0, 0, 1);
+    }
+
+    template<typename _Tp>
+    cv::Matx<_Tp, 4, 4> colorSink(_Tp b, _Tp g, _Tp r, _Tp a)
+    {
+        return cv::Matx<_Tp, 4, 4>(
+            1 - a, 0, 0, a*b,
+            0, 1 - a, 0, a*g,
+            0, 0, 1 - a, a*r,
+            0, 0, 0, 1);
+    }
+
     inline cv::Scalar toColor(cv::Matx<float, 4, 1> const &m) { return cv::Scalar(255.0 * m(0), 255.0 * m(1), 255.0 * m(2), 255.0 * m(3)); }
 
     inline float r()
