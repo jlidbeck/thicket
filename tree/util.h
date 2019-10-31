@@ -82,7 +82,8 @@ namespace util
                                         0,     0, 1 );
         }
 
-        //  Create transform to map two points using rotation and scaling
+        //  Create transform matrix to map two points using rotation and scaling
+        //  Generates orthogonal 3x3 transform matrix that maps src0 to dest0 and src1 to dest1, with a positive or zero determinant
         template<typename _Tp>
         cv::Matx<_Tp, 3, 3> getEdgeMap(cv::Point_<_Tp> src0, cv::Point_<_Tp> src1, cv::Point_<_Tp> dest0, cv::Point_<_Tp> dest1)
         {
@@ -95,6 +96,26 @@ namespace util
                 sc, -ss, 0,
                 ss,  sc, 0,
                 0,   0,  1 );
+            return getTranslate(dest0.x, dest0.y)
+                * scrot
+                * getTranslate(-src0.x, -src0.y);
+        }
+
+
+        //  Create transform to map two points using reflection and scaling
+        //  Generates orthogonal 3x3 transform matrix that maps src0 to dest0 and src1 to dest1, with a negative or zero determinant
+        template<typename _Tp>
+        cv::Matx<_Tp, 3, 3> getMirroredEdgeMap(cv::Point_<_Tp> src0, cv::Point_<_Tp> src1, cv::Point_<_Tp> dest0, cv::Point_<_Tp> dest1)
+        {
+            cv::Point_<_Tp> srcv = src1 - src0;
+            cv::Point_<_Tp> destv = dest1 - dest0;
+            auto srcnorm = srcv.dot(srcv);
+            auto sc = (srcv.x*destv.x - srcv.y*destv.y) / srcnorm;
+            auto ss = (srcv.x*destv.y + srcv.y*destv.x) / srcnorm;
+            auto scrot = cv::Matx<_Tp, 3, 3>(
+                sc, ss, 0,
+                ss, -sc, 0,
+                0, 0, 1);
             return getTranslate(dest0.x, dest0.y)
                 * scrot
                 * getTranslate(-src0.x, -src0.y);
