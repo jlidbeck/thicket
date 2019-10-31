@@ -17,6 +17,31 @@ typedef cv::Matx<float, 4, 1> Matx41;
 typedef cv::Matx<float, 4, 4> Matx44;
 
 
+class qcanvas
+{
+public:
+    Matx33 globalTransform;
+    cv::Mat image;
+
+    qcanvas() {
+    }
+
+    void create(cv::Mat im)
+    {
+        image = im;
+    }
+
+    // sets global transform map to map provided domain to image, centered, vertically flipped
+    void setScaleToFit(cv::Rect_<float> const &rect, float buffer)
+    {
+        if (image.empty()) throw std::exception("Image is empty");
+
+        globalTransform = util::transform3x3::centerAndFit(rect, cv::Rect_<float>(0, 0, image.cols, image.rows), buffer, true);
+    }
+
+};
+
+
 class qtransform
 {
 public:
@@ -60,11 +85,17 @@ public:
     Matx33      globalTransform;
     cv::Scalar  color = cv::Scalar(1, 0, 0, 1);
 
-    qnode(double beginTime_ = 0);
+    qnode(double beginTime_ = 0)
+    {
+        beginTime = beginTime_;
+        generation = 0;
+        color = cv::Scalar(1, 1, 1, 1);
+        globalTransform = globalTransform.eye();
+    }
 
-    inline float det() const { return (globalTransform(0, 0) * globalTransform(0, 0) + globalTransform(1, 0) * globalTransform(1, 0)); }
+    inline float det() const { return (globalTransform(0, 0) * globalTransform(1, 1) - globalTransform(0, 1) * globalTransform(1, 0)); }
 
-    inline bool operator!() const { return (det() < 1e-6); }
+    inline bool operator!() const { return !( fabs(det()) > 1e-5 ); }
 
     void getPolyPoints(std::vector<cv::Point2f> const &points, std::vector<cv::Point2f> &transformedPoints) const
     {
@@ -92,16 +123,21 @@ public:
 class qtree
 {
 public:
-    std::vector<qtransform> transforms;
-    std::priority_queue<qnode, std::deque<qnode>, qnode::EarliestFirst> nodeQueue;
+    // settings
 
+    // same polygon for all nodes
     std::vector<cv::Point2f> polygon;
+    std::vector<qtransform> transforms;
     double offspringTemporalRandomness = 100.0;
+    
+    std::priority_queue<qnode, std::deque<qnode>, qnode::EarliestFirst> nodeQueue;
 
 public:
     qtree() {}
 
-    virtual void create(int settings) = 0;
+    virtual void randomizeSettings(int seed) { }
+
+    virtual void create() = 0;
 
     // process the next node in the queue
     virtual bool process();

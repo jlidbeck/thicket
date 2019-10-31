@@ -35,11 +35,16 @@ namespace std
     };
 }
 
+
+//  Intersection field is a grid, stored as a set of integer pairs
+//  to detect intersection
 class GridTree : public qtree
 {
-    std::unordered_set<cv::Point> m_covered;
-
+    // settings
     int maxRadius = 100;
+
+    // set of grid points covered by nodes
+    std::unordered_set<cv::Point> m_covered;
 
 
 public:
@@ -47,7 +52,12 @@ public:
     GridTree() { }
 	
 
-    void create(int randomizeSettings) override
+    void randomizeSettings(int seed) override
+    {
+
+    }
+
+    void create() override
     {
         offspringTemporalRandomness = 1000;
 
@@ -90,10 +100,6 @@ public:
 
     virtual cv::Rect_<float> getBoundingRect() const override
     {
-            //vector<cv::Point2f> v;
-            //rootNode.getPolyPoints(polygon, v);
-            //return util::getBoundingRect(v);
-
         float r = maxRadius;
         return cv::Rect_<float>(-r, -r, 2 * r, 2 * r);
     }
@@ -111,7 +117,6 @@ public:
         if (m_covered.find(center) == m_covered.end())
             return true;
 
-        //cout << "**collision (" << center.x << ", " << center.y << ")\n";
         return false;
     }
 
@@ -121,13 +126,13 @@ public:
         // take up space
         auto center = getNodeKey(currentNode);
         m_covered.insert(center);
-        //cout << "Space filled: (" << center.x << ", " << center.y << ") :" << m_covered.size() << endl;
     }
 
-    private:
+private:
+
+    // get integer grid point nearest node centroid
     cv::Point getNodeKey(qnode const &node) const
     {
-        // assume each node is centered near a unique integer grid point
         vector<cv::Point2f> pts;
         node.getPolyPoints(polygon, pts);
         cv::Point center = ((pts[0] + pts[2]) / 2.0f );
@@ -150,21 +155,30 @@ float halfRoot(int n)
 class ReptileTree : public qtree
 {
 private:
+    // settings
+    int maxRadius = 100;
+
     qnode m_rootNode;
     cv::Rect_<float> m_boundingRect;
 
 public:
     static const int NUM_PRESETS = 8;
+    int settingsPreset = -1;
 
 public:
-    virtual void create(int settings) override
+    virtual void randomizeSettings(int n) override
+    {
+        settingsPreset = n;
+    }
+
+    virtual void create() override
     {
         m_boundingRect = cv::Rect_<float>(0, 0, 0, 0);
 
         m_rootNode.color = cv::Scalar(0.5, 0.5, 0.5, 1);
         m_rootNode.globalTransform = Matx33::eye();
 
-        switch (settings % NUM_PRESETS)
+        switch (settingsPreset % NUM_PRESETS)
         {
         case 0:
             // H hourglass
@@ -329,7 +343,7 @@ public:
 
         offspringTemporalRandomness = 1000;
 
-        if (settings >= NUM_PRESETS)
+        if (settingsPreset >= NUM_PRESETS)
         {
             for (auto &t : transforms)
             {

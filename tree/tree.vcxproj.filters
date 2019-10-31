@@ -39,6 +39,7 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="incommensurable_trig.cpp">
+    <ClCompile Include="treedemo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

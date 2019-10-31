@@ -18,20 +18,23 @@ using std::endl;
 class SelfAvoidantPolygonTree : public qtree
 {
 protected:
+    // settings
+    int maxRadius = 100;
+    int polygonSides = 5;
+
+    int fieldResolution = 10;   // pixels per unit
+
+    // intersection field
     cv::Mat1b m_field;
     mutable cv::Mat1b m_fieldLayer;
     Matx33 m_fieldTransform;
 
-    int fieldResolution = 10;
-    int maxRadius = 100;
-
-    int polygonSides = 5;
 
 public:
 
     SelfAvoidantPolygonTree() { }
 
-    virtual void setDefaultSettings(int randomize)
+    virtual void randomizeSettings(int randomize)
     {
         maxRadius = 100;
         polygonSides = 5;
@@ -46,10 +49,9 @@ public:
         }
     }
 
-    virtual void create(int randomizeSettings) override
+    virtual void create() override
     {
-        setDefaultSettings(randomizeSettings);
-
+        // initialize intersection field
         m_field.create(maxRadius*2*fieldResolution, maxRadius*2*fieldResolution);
         m_field = 0;
         m_field.copyTo(m_fieldLayer);
@@ -101,12 +103,7 @@ public:
 
     virtual cv::Rect_<float> getBoundingRect() const override
     {
-            //vector<cv::Point2f> v;
-            //rootNode.getPolyPoints(polygon, v);
-            //return util::getBoundingRect(v);
-
-        float r = maxRadius;
-        return cv::Rect_<float>(-r, -r, 2 * r, 2 * r);
+        return cv::Rect_<float>(-maxRadius, -maxRadius, 2 * maxRadius, 2 * maxRadius);
     }
 
     virtual bool isViable(qnode const &node) const override
@@ -164,13 +161,14 @@ class ScaledPolygonTree : public SelfAvoidantPolygonTree
     bool m_ambidextrous;
 
 public:
-    virtual void setDefaultSettings(int randomize) override
+    virtual void randomizeSettings(int randomize) override
     {
-        SelfAvoidantPolygonTree::setDefaultSettings(randomize);
+        SelfAvoidantPolygonTree::randomizeSettings(randomize);
 
         fieldResolution = 200;
         maxRadius = 3.5;
         
+        // ratio: child size / parent size
         std::array<float, 5> ratioPresets = { {
             (sqrt(5.0f) - 1.0f) / 2.0f,        // phi
             0.5f,
@@ -183,10 +181,9 @@ public:
         m_ambidextrous = (randomize % 2);
     }
 
-    virtual void create(int randomizeSettings) override
+    virtual void create() override
     {
-        SelfAvoidantPolygonTree::create(randomizeSettings);
-
+        SelfAvoidantPolygonTree::create();
 
         // override edge transforms
         transforms.clear();
@@ -220,18 +217,18 @@ public:
 class TrapezoidTree : public SelfAvoidantPolygonTree
 {
 public:
-    virtual void setDefaultSettings(int randomize) override
+    virtual void randomizeSettings(int randomize) override
     {
-        SelfAvoidantPolygonTree::setDefaultSettings(randomize);
+        SelfAvoidantPolygonTree::randomizeSettings(randomize);
 
         fieldResolution = 200;
-        maxRadius = 20.0;
+        maxRadius = 2.0;
         offspringTemporalRandomness = 10;
     }
 
-    virtual void create(int randomizeSettings) override
+    virtual void create() override
     {
-        SelfAvoidantPolygonTree::create(randomizeSettings);
+        SelfAvoidantPolygonTree::create();
 
         // override polygon
         polygon = { { { -0.5f, -0.5f}, {0.5f, -0.5f}, {0.4f, 0.4f}, {-0.5f, 0.45f} } };
