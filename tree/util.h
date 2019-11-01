@@ -1,6 +1,7 @@
 #pragma once
 
 #include <opencv2/core/core.hpp>
+#include <opencv2/imgproc.hpp>
 #include <vector>
 
 
@@ -90,8 +91,8 @@ namespace util
             cv::Point_<_Tp> srcv = src1 - src0;
             cv::Point_<_Tp> destv = dest1 - dest0;
             auto srcnorm = srcv.dot(srcv);
-            auto sc = srcv.dot(destv) / srcnorm;
-            auto ss = srcv.cross(destv) / srcnorm;
+            _Tp sc = srcv.dot(destv) / srcnorm;
+            _Tp ss = srcv.cross(destv) / srcnorm;
             auto scrot = cv::Matx<_Tp, 3, 3>(
                 sc, -ss, 0,
                 ss,  sc, 0,
@@ -212,19 +213,28 @@ namespace util
         return rand() * (1.0f / RAND_MAX);
     }
 
-    inline cv::Matx<float, 4, 1> randomColor()
+    template<typename _Tp>
+    inline cv::Scalar hsv2bgr(_Tp h, _Tp s, _Tp v)
     {
-        float a = r(), b = r();
-        switch (rand() % 6)
-        {
-        case 0: return cv::Matx<float, 4, 1>(a, b, 0, 1);
-        case 1: return cv::Matx<float, 4, 1>(a, b, 1, 1);
-        case 2: return cv::Matx<float, 4, 1>(b, 0, a, 1);
-        case 3: return cv::Matx<float, 4, 1>(b, 1, a, 1);
-        case 4: return cv::Matx<float, 4, 1>(0, a, b, 1);
-        default:
-        case 5: return cv::Matx<float, 4, 1>(1, a, b, 1);
-        }
+        cv::Mat3f mat(1, 1, cv::Vec3f((float)h, (float)s, (float)v));
+        cv::cvtColor(mat, mat, cv::ColorConversionCodes::COLOR_HSV2BGR);
+        return (mat(0, 0));
+    }
+
+    inline cv::Scalar randomColor()
+    {
+        return hsv2bgr(360.0*r(), 1.0, 0.5);
+        //float a = r(), b = r();
+        //switch (rand() % 6)
+        //{
+        //case 0: return cv::Matx<float, 4, 1>(a, b, 0, 1);
+        //case 1: return cv::Matx<float, 4, 1>(a, b, 1, 1);
+        //case 2: return cv::Matx<float, 4, 1>(b, 0, a, 1);
+        //case 3: return cv::Matx<float, 4, 1>(b, 1, a, 1);
+        //case 4: return cv::Matx<float, 4, 1>(0, a, b, 1);
+        //default:
+        //case 5: return cv::Matx<float, 4, 1>(1, a, b, 1);
+        //}
     }
 
     template<class _T>

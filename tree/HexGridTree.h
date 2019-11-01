@@ -193,7 +193,7 @@ public:
             transforms.push_back(
                 qtransform(
                     util::transform3x3::getEdgeMap(polygon[polygon.size() - 1], polygon[0], polygon[i], edgePt1),
-                    util::colorSink(util::randomColor(), 0.5f))
+                    util::colorSink(util::randomColor(), 0.5))
             );
 
             if (m_ambidextrous)
@@ -202,7 +202,7 @@ public:
                 transforms.push_back(
                     qtransform(
                         util::transform3x3::getEdgeMap(polygon[polygon.size() - 1], polygon[0], edgePt2, polygon[i - 1]),
-                        util::colorSink(util::randomColor(), 0.5f))
+                        util::colorSink(util::randomColor(), 0.5))
                 );
             }
         }
