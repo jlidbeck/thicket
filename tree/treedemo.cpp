@@ -5,7 +5,6 @@
 #include <opencv2/imgproc.hpp>
 #include <iostream>
 #include <filesystem>
-#include <random>
 #include <vector>
 #include <chrono>
 
@@ -53,11 +52,6 @@ public:
 
         //qtransform  t1( 90, halfRoot(2), cv::Point2f(0,  0.9)),
         //            t2(-90, halfRoot(2), cv::Point2f(0, -0.9));
-
-        std::random_device rd;  //Will be used to obtain a seed for the random number engine
-        std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
-        std::uniform_int_distribution<> dis(0, canvas.image.cols - 50);
-        //cv::Rect rect(0, 0, 50, 50);
 
         while (1)
         {

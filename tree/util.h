@@ -208,33 +208,12 @@ namespace util
 
     inline cv::Scalar toColor(cv::Matx<float, 4, 1> const &m) { return cv::Scalar(255.0 * m(0), 255.0 * m(1), 255.0 * m(2), 255.0 * m(3)); }
 
-    inline float r()
-    {
-        return rand() * (1.0f / RAND_MAX);
-    }
-
     template<typename _Tp>
     inline cv::Scalar hsv2bgr(_Tp h, _Tp s, _Tp v)
     {
         cv::Mat3f mat(1, 1, cv::Vec3f((float)h, (float)s, (float)v));
         cv::cvtColor(mat, mat, cv::ColorConversionCodes::COLOR_HSV2BGR);
         return (mat(0, 0));
-    }
-
-    inline cv::Scalar randomColor()
-    {
-        return hsv2bgr(360.0*r(), 1.0, 0.5);
-        //float a = r(), b = r();
-        //switch (rand() % 6)
-        //{
-        //case 0: return cv::Matx<float, 4, 1>(a, b, 0, 1);
-        //case 1: return cv::Matx<float, 4, 1>(a, b, 1, 1);
-        //case 2: return cv::Matx<float, 4, 1>(b, 0, a, 1);
-        //case 3: return cv::Matx<float, 4, 1>(b, 1, a, 1);
-        //case 4: return cv::Matx<float, 4, 1>(0, a, b, 1);
-        //default:
-        //case 5: return cv::Matx<float, 4, 1>(1, a, b, 1);
-        //}
     }
 
     template<class _T>

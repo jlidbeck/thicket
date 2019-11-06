@@ -5,6 +5,7 @@
 #include <vector>
 #include <queue>
 #include <filesystem>
+#include <random>
 
 namespace fs = std::filesystem;
 
@@ -162,6 +163,8 @@ public:
     std::vector<qtransform> transforms;
     double offspringTemporalRandomness = 100.0;
     
+    // model
+    std::mt19937 prng; //Standard mersenne_twister_engine with default seed
     std::priority_queue<qnode, std::deque<qnode>, qnode::EarliestFirst> nodeQueue;
 
 public:
@@ -203,6 +206,36 @@ public:
     virtual void drawNode(qcanvas &canvas, qnode const &node);
 
     virtual void saveImage(fs::path imagePath) { };
+
+    // util
+    
+#pragma region PRNG
+
+    inline double r()
+    {
+        std::uniform_real_distribution<double> dist{ 0.0, 1.0 };
+        return dist(prng);
+    }
+
+    inline double r(double maxVal)
+    {
+        std::uniform_real_distribution<double> dist{ 0.0, maxVal };
+        return dist(prng);
+    }
+
+    inline int r(int maxVal)
+    {
+        std::uniform_int_distribution<int> dist{ 0, maxVal };
+        return dist(prng);
+    }
+
+    inline cv::Scalar randomColor()
+    {
+        return util::hsv2bgr(r(360.0), 1.0, 0.5);
+    }
+
+#pragma endregion
+
 };
 
 

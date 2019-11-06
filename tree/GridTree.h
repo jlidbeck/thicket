@@ -3,7 +3,6 @@
 
 #include "tree.h"
 #include "util.h"
-#include <random>
 #include <vector>
 #include <iostream>
 #include <unordered_set>
@@ -76,19 +75,6 @@ public:
         qnode rootNode;
         rootNode.globalTransform = util::transform3x3::getTranslate(-0.5f, -0.5f);
         rootNode.color = cv::Scalar(1, 1, 1, 1);
-
-
-        //if (settings)
-        //{
-        //    for (auto &t : transforms)
-        //    {
-        //        t.colorTransform = util::colorSink(util::randomColor(), util::r());
-        //    }
-
-        //    offspringTemporalRandomness = 1 + rand() % 500;
-        //}
-
-        cout << "Settings changed: " << transforms.size() << " transforms, offspringTemporalRandomness: " << offspringTemporalRandomness << endl;
 
         // clear and initialize the queue with the seed
 
@@ -339,11 +325,11 @@ public:
         {
             for (auto &t : transforms)
             {
-                t.colorTransform = util::colorSink(util::randomColor(), (double)util::r());
-                t.gestation = 1 + rand() % 500;
+                t.colorTransform = util::colorSink(randomColor(), r());
+                t.gestation = 1 + r(500.0);
             }
 
-            offspringTemporalRandomness = 1 + rand() % 100;
+            offspringTemporalRandomness = 1 + r(100.0);
         }
 
         cout << "ReptileTree settings: " << getSettingsString() << endl;

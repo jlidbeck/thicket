@@ -2,7 +2,6 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc.hpp>
-#include <random>
 #include <vector>
 
 
@@ -36,7 +35,8 @@ bool qtree::process()
 void qtree::beget(qnode const & parent, qtransform const & t, qnode & child)
 {
     child.generation = parent.generation + 1;
-    child.beginTime = parent.beginTime + t.gestation + util::r() * offspringTemporalRandomness;
+
+    child.beginTime = parent.beginTime + t.gestation + r(offspringTemporalRandomness);
 
     child.globalTransform = parent.globalTransform * t.transformMatrix;
 

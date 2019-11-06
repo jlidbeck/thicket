@@ -3,7 +3,6 @@
 
 #include "tree.h"
 #include "util.h"
-#include <random>
 #include <vector>
 #include <iostream>
 #include <opencv2/imgcodecs.hpp>
@@ -39,16 +38,18 @@ public:
 
     virtual void randomizeSettings(int randomize)
     {
+        prng.seed(randomize);
+
         maxRadius = 100.0;
         polygonSides = 5;
         offspringTemporalRandomness = 1000;
 
         if (randomize)
         {
-            maxRadius = 5 + rand() % 100;
+            maxRadius = 5.0 + r(100.0);
             polygonSides = (randomize % 6) + 3;
 
-            offspringTemporalRandomness = 1 + rand() % 200;
+            offspringTemporalRandomness = r(200.0);
         }
     }
 
@@ -63,7 +64,7 @@ public:
 
         // create regular polygon
         polygon.clear();
-        float angle = -CV_2PI / (polygonSides * 2);
+        double angle = -CV_2PI / (polygonSides * 2);
         for (int i = 0; i < polygonSides; i++)
         {
             polygon.push_back(Point2f(sin(angle), cos(angle)));
@@ -76,7 +77,7 @@ public:
         {
             Matx41 hsv((float)i/(float)polygonSides, 1.0, 0.5), bgr(1.0, 0.5, 0.0);
             //cv::cvtColor(hsv, bgr, cv::ColorConversionCodes::COLOR_HSV2BGR);
-            bgr = util::randomColor();
+            bgr = randomColor();
             transforms.push_back(
                 qtransform(
                     util::transform3x3::getEdgeMap(polygon[polygonSides - 1], polygon[0], polygon[i], polygon[i - 1]),
@@ -193,7 +194,7 @@ public:
             transforms.push_back(
                 qtransform(
                     util::transform3x3::getEdgeMap(polygon[polygon.size() - 1], polygon[0], polygon[i], edgePt1),
-                    util::colorSink(util::randomColor(), 0.5))
+                    util::colorSink(randomColor(), 0.5))
             );
 
             if (m_ambidextrous)
@@ -202,7 +203,7 @@ public:
                 transforms.push_back(
                     qtransform(
                         util::transform3x3::getEdgeMap(polygon[polygon.size() - 1], polygon[0], edgePt2, polygon[i - 1]),
-                        util::colorSink(util::randomColor(), 0.5))
+                        util::colorSink(randomColor(), 0.5))
                 );
             }
         }
@@ -246,24 +247,24 @@ public:
         //    transforms.push_back(
         //        qtransform(
         //            util::transform3x3::getMirroredEdgeMap(polygon[0], polygon[1], polygon[i], polygon[(i+1)%polygon.size()]),
-        //            util::colorSink(util::randomColor(), 0.5f))
+        //            util::colorSink(randomColor(), 0.5f))
         //    );
         //}
 
         transforms.push_back(
             qtransform(
                 util::transform3x3::getMirroredEdgeMap(polygon[0], polygon[1], polygon[1], polygon[2]),
-                util::colorSink(util::randomColor(), 0.5))
+                util::colorSink(randomColor(), 0.5))
         );
         transforms.push_back(
             qtransform(
                 util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[3], polygon[2]),
-                util::colorSink(util::randomColor(), 0.5))
+                util::colorSink(randomColor(), 0.5))
         );
         transforms.push_back(
             qtransform(
                 util::transform3x3::getMirroredEdgeMap(polygon[0], polygon[1], polygon[3], polygon[0]),
-                util::colorSink(util::randomColor(), 0.5))
+                util::colorSink(randomColor(), 0.5))
         );
 
         //transforms[0].gestation = 1111.1;
@@ -328,11 +329,12 @@ public:
         //auto ct2 = util::colorSink(util::hsv2bgr(200.0, 1.0, 0.75), 0.3);
 
         std::vector<Matx44> colors;
-        double sat = util::r();
-        double v = util::r();
-        colors.push_back(util::colorSink(util::hsv2bgr(util::r()*360.0, sat, v), 0.5 * util::r()));
-        colors.push_back(util::colorSink(util::hsv2bgr(util::r()*360.0, sat, v), 0.5 * util::r()));
-        colors.push_back(util::colorSink(util::hsv2bgr(util::r()*360.0, sat, v), 0.5 * util::r()));
+        std::uniform_real_distribution<double> dist{ 0.0,1.0 };
+        double sat = r();
+        double v = r();
+        colors.push_back(util::colorSink(util::hsv2bgr(r()*360.0, sat, v), 0.5 * r()));
+        colors.push_back(util::colorSink(util::hsv2bgr(r()*360.0, sat, v), 0.5 * r()));
+        colors.push_back(util::colorSink(util::hsv2bgr(r()*360.0, sat, v), 0.5 * r()));
         auto icolor = colors.begin();
 
         for (int i = 0; i < polygon.size(); ++i)
@@ -342,13 +344,13 @@ public:
                 if (++icolor == colors.end())
                     icolor = colors.begin();
 
-                if(rand() % 10 == 0)
+                if(r(20) == 0)
                     transforms.push_back(
                         qtransform(
                             util::transform3x3::getEdgeMap(polygon[i], polygon[(i + 1) % polygon.size()], polygon[(j + 1) % polygon.size()], polygon[j]),
                             *icolor)
                     );
-                if (rand() % 10 == 0)
+                if (r(20) == 0)
                     transforms.push_back(
                         qtransform(
                             util::transform3x3::getMirroredEdgeMap(polygon[i], polygon[(i + 1) % polygon.size()], polygon[j], polygon[(j + 1) % polygon.size()]),
