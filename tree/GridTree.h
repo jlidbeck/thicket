@@ -347,18 +347,24 @@ public:
         {
             for (auto &t : transforms)
             {
-                t.colorTransform = util::colorSink(util::randomColor(), util::r());
+                t.colorTransform = util::colorSink(util::randomColor(), (double)util::r());
+                t.gestation = 1 + rand() % 500;
             }
 
-            offspringTemporalRandomness = 1 + rand() % 500;
+            offspringTemporalRandomness = 1 + rand() % 100;
         }
 
-        cout << "Settings changed: " << transforms.size() << " transforms, offspringTemporalRandomness: " << offspringTemporalRandomness << endl;
+        cout << "ReptileTree settings: " << getSettingsString() << endl;
 
         // clear and initialize the queue with the seed
 
         util::clear(nodeQueue);
         nodeQueue.push(m_rootNode);
+    }
+
+    virtual std::string getSettingsString() const override
+    {
+        return std::string("ReptileTree: ") + qtree::getSettingsString();
     }
 
     virtual cv::Rect_<float> getBoundingRect() const override

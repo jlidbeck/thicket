@@ -34,7 +34,7 @@ public:
     int minNodesProcessedPerFrame = 1;
     int maxNodesProcessedPerFrame = 64;
 
-    int presetIndex = 4;
+    int presetIndex = 12;
     float imagePadding = 0.1f;
 
     void run()
@@ -42,7 +42,7 @@ public:
         tree.randomizeSettings(presetIndex);
         tree.create();
 
-        cv::Mat3b img(cv::Size(1200, 1200));
+        cv::Mat3b img(cv::Size(1200, 800));
         img = 0;
 
         canvas.create(img);

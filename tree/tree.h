@@ -76,6 +76,34 @@ public:
     }
 };
 
+namespace std
+{
+    template<typename _Tp>
+    string to_string(std::vector<cv::Point_<_Tp> > const &polygon)
+    {
+        return std::string("[]");
+    }
+
+    template<typename _Tp, int m, int n>
+    string to_string(cv::Matx<_Tp, m, n> const &mat)
+    {
+        auto sz = std::string("[ ");
+        for (int i = 0; i < m; ++i)
+            for (int j = 0; j < n; ++j)
+                sz += std::to_string(mat(i, j)) + (j < n - 1 ? ", " : ",\n  ");
+        return sz + " ]";
+    }
+
+    template<typename _Tp>
+    std::string to_string(qtransform const &t)
+    {
+        return std::string("{ transform: ") + to_string(t.transformMatrix)
+            + ",\n    color: " + to_string(t.colorTransform)
+            + ",\n    gestation: " + to_string(t.gestation)
+            + "\n}";
+    }
+}
+
 
 class qnode
 {
@@ -124,6 +152,7 @@ class qtree
 {
 public:
     // settings
+    int maxRadius = 100;
 
     // same polygon for all nodes
     std::vector<cv::Point2f> polygon;
@@ -136,6 +165,17 @@ public:
     qtree() {}
 
     virtual void randomizeSettings(int seed) { }
+    virtual std::string getSettingsString() const
+    {
+        std::string sz = "{ transforms:[\n";
+        for (auto &t : transforms)
+            sz += std::to_string<float>(t) + ",\n";
+        sz += "],\n  offspringTemporalRandomness:" + std::to_string(offspringTemporalRandomness)
+            + ",\n  maxRadius:" + std::to_string(maxRadius)
+            + ",\n  polygon:" + std::to_string(polygon)
+            + "\n}";
+        return sz;
+    }
 
     virtual void create() = 0;
 
@@ -151,8 +191,15 @@ public:
     // generate a child node from a parent
     virtual void beget(qnode const & parent, qtransform const & t, qnode & child);
 
-    virtual cv::Rect_<float> getBoundingRect() const = 0;
+    virtual cv::Rect_<float> getBoundingRect() const
+    {
+        float r = (float)maxRadius;
+        return cv::Rect_<float>(-r, -r, 2 * r, 2 * r);
+    }
+
     virtual void drawNode(qcanvas &canvas, qnode const &node);
+
+
 };
 
 

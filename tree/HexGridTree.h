@@ -14,6 +14,9 @@ using std::cout;
 using std::endl;
 
 
+//  Limited-growth qtrees
+//  These models limit growth by prohibiting self-intersection
+
 
 class SelfAvoidantPolygonTree : public qtree
 {
@@ -109,6 +112,9 @@ public:
     virtual bool isViable(qnode const &node) const override
     {
         if (!node) 
+            return false;
+
+        if (fabs(node.det()) < 0.01f)
             return false;
 
         // since the node polygon is centered at its local origin, its global
@@ -222,7 +228,7 @@ public:
         SelfAvoidantPolygonTree::randomizeSettings(randomize);
 
         fieldResolution = 200;
-        maxRadius = 2.0;
+        maxRadius = 10;
         offspringTemporalRandomness = 10;
     }
 
@@ -233,30 +239,51 @@ public:
         // override polygon
         polygon = { { { -0.5f, -0.5f}, {0.5f, -0.5f}, {0.4f, 0.4f}, {-0.5f, 0.45f} } };
 
-        float angle = 6.283f / 24.0f;
-        float r = 1.0f / angle;
-        polygon = { { {r - 1,0}, {r,0}, {r*cos(angle),r*sin(angle)}, {(r - 1)*cos(angle),(r - 1)*sin(angle)} } };
+        //auto m = util::transform3x3::getMirroredEdgeMap(cv::Point2f( 0.0f,0.0f ), cv::Point2f( 1.0f,0.0f ), cv::Point2f( 0.0f,0.0f ), cv::Point2f( 1.0f,0.0f ));
+
+        int steps = 24;
+        float angle = 6.283f / steps;
+        float r0 = 0.5f;
+        float r1 = 1.0f;
+        float growthFactor = pow(r1 / r0, 2.0f / steps);
+        polygon = { { {r0,0}, {r1,0}, {r1*growthFactor*cos(angle),r1*growthFactor*sin(angle)}, {r0*growthFactor*cos(angle),r0*growthFactor*sin(angle)} } };
 
         // override edge transforms
         transforms.clear();
-        for (int i = 0; i < polygon.size(); ++i)
-        {
-            transforms.push_back(
-                qtransform(
-                    util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[(i+1)%polygon.size()], polygon[i]),
-                    util::colorSink(util::randomColor(), 0.5f))
-            );
-        }
+        //for (int i = 1; i < polygon.size(); ++i)
+        //{
+        //    transforms.push_back(
+        //        qtransform(
+        //            util::transform3x3::getMirroredEdgeMap(polygon[0], polygon[1], polygon[i], polygon[(i+1)%polygon.size()]),
+        //            util::colorSink(util::randomColor(), 0.5f))
+        //    );
+        //}
 
-        transforms[0].gestation = 1111.1;
-        transforms[1].gestation = 22.2;
-        transforms[2].gestation = 1.0;
-        transforms[3].gestation = 3.3;
+        transforms.push_back(
+            qtransform(
+                util::transform3x3::getMirroredEdgeMap(polygon[0], polygon[1], polygon[1], polygon[2]),
+                util::colorSink(util::randomColor(), 0.5))
+        );
+        transforms.push_back(
+            qtransform(
+                util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[3], polygon[2]),
+                util::colorSink(util::randomColor(), 0.5))
+        );
+        transforms.push_back(
+            qtransform(
+                util::transform3x3::getMirroredEdgeMap(polygon[0], polygon[1], polygon[3], polygon[0]),
+                util::colorSink(util::randomColor(), 0.5))
+        );
 
-        transforms[0].colorTransform = util::colorSink(1.0f,1.0f,1.0f, 0.5f);
-        transforms[1].colorTransform = util::colorSink(0.0f,0.5f,0.0f, 0.8f);
-        transforms[2].colorTransform = util::colorSink(0.5f,1.0f,1.0f, 0.3f);
-        transforms[3].colorTransform = util::colorSink(0.9f,0.5f,0.0f, 0.8f);
+        //transforms[0].gestation = 1111.1;
+        transforms[0].gestation = 6.2;
+        transforms[1].gestation = 1.0;
+        transforms[2].gestation = 7.3;
+
+        //transforms[0].colorTransform = util::colorSink(1.0f,1.0f,1.0f, 0.5f);
+        //transforms[0].colorTransform = util::colorSink(0.0f,0.5f,0.0f, 0.8f);
+        //transforms[1].colorTransform = util::colorSink(0.5f,1.0f,1.0f, 0.3f);
+        //transforms[2].colorTransform = util::colorSink(0.9f,0.5f,0.0f, 0.8f);
 
 
 

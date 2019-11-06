@@ -58,10 +58,11 @@ void qtree::drawNode(qcanvas &canvas, qnode const &node)
     for (auto const& p : v)
         pts[0].push_back(p * 16);
 
-    cv::Scalar color = (node.det() < 0)
-        ? 255.0 * (cv::Scalar(1.0, 1.0, 1.0, 1.0) - node.color)
-        : 255.0 * node.color;
-    cv::Scalar lineColor = cv::Scalar(255, 255, 255, 255);
+    cv::Scalar color = 
+        //(node.det() < 0) ? 255.0 * (cv::Scalar(1.0, 1.0, 1.0, 1.0) - node.color) : 
+        255.0 * node.color;
+    //cv::Scalar lineColor = cv::Scalar(255, 255, 255, 255);
+    cv::Scalar lineColor = cv::Scalar(0);
     cv::fillPoly(canvas.image, pts, color, cv::LineTypes::LINE_AA, 4);
     //cv::polylines(canvas.image, pts, true, lineColor, 1, cv::LineTypes::LINE_AA, 4);
 }
