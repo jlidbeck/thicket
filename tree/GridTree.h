@@ -41,7 +41,6 @@ namespace std
 class GridTree : public qtree
 {
     // settings
-    int maxRadius = 100;
 
     // set of grid points covered by nodes
     std::unordered_set<cv::Point> m_covered;
@@ -98,12 +97,6 @@ public:
     }
 
 
-    virtual cv::Rect_<float> getBoundingRect() const override
-    {
-        float r = maxRadius;
-        return cv::Rect_<float>(-r, -r, 2 * r, 2 * r);
-    }
-
     virtual bool isViable(qnode const &node) const override
     {
         if (!node) 
@@ -156,7 +149,6 @@ class ReptileTree : public qtree
 {
 private:
     // settings
-    int maxRadius = 100;
 
     qnode m_rootNode;
     cv::Rect_<float> m_boundingRect;
@@ -183,8 +175,8 @@ public:
         case 0:
             // H hourglass
             polygon = { {
-                { .1f,-1}, { .08,0}, { .1, 1},
-                {-.1, 1}, {-.08,0}, {-.1,-1}
+                { .1f,-1}, { .08f,0}, { .1f, 1},
+                {-.1f, 1}, {-.08f,0}, {-.1f,-1}
                 } };
 
             transforms = { {
@@ -294,7 +286,7 @@ public:
         case 6: // 6-stars
         {
             polygon.clear();
-            float r32 = sqrt(3.0f)*0.5;
+            float r32 = sqrt(3.0f)*0.5f;
             float c[12] = { 1.0, r32, 0.5, 0.0,-0.5,-r32,
                             -1.0,-r32,-0.5, 0.0, 0.5, r32 };
             for (int i = 0; i < 12; i += 2)

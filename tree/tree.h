@@ -39,7 +39,7 @@ public:
     {
         if (image.empty()) throw std::exception("Image is empty");
 
-        globalTransform = util::transform3x3::centerAndFit(rect, cv::Rect_<float>(0, 0, image.cols, image.rows), buffer, true);
+        globalTransform = util::transform3x3::centerAndFit(rect, cv::Rect_<float>(0.0f, 0.0f, (float)image.cols, (float)image.rows), buffer, true);
     }
 
 };
@@ -155,7 +155,7 @@ class qtree
 {
 public:
     // settings
-    int maxRadius = 100;
+    double maxRadius = 100.0;
 
     // same polygon for all nodes
     std::vector<cv::Point2f> polygon;

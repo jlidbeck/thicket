@@ -23,7 +23,6 @@ class SelfAvoidantPolygonTree : public qtree
 {
 protected:
     // settings
-    int maxRadius = 100;
     int polygonSides = 5;
 
     int fieldResolution = 10;   // pixels per unit
@@ -40,7 +39,7 @@ public:
 
     virtual void randomizeSettings(int randomize)
     {
-        maxRadius = 100;
+        maxRadius = 100.0;
         polygonSides = 5;
         offspringTemporalRandomness = 1000;
 
@@ -56,18 +55,19 @@ public:
     virtual void create() override
     {
         // initialize intersection field
-        m_field.create(maxRadius*2*fieldResolution, maxRadius*2*fieldResolution);
+        int size = (int)(0.5 + maxRadius * 2 * fieldResolution);
+        m_field.create(size, size);
         m_field = 0;
         m_field.copyTo(m_fieldLayer);
-        m_fieldTransform = util::transform3x3::getScaleTranslate(fieldResolution, maxRadius*fieldResolution, maxRadius*fieldResolution);
+        m_fieldTransform = util::transform3x3::getScaleTranslate((double)fieldResolution, maxRadius*fieldResolution, maxRadius*fieldResolution);
 
         // create regular polygon
         polygon.clear();
-        float angle = -6.283 / (polygonSides * 2);
+        float angle = -CV_2PI / (polygonSides * 2);
         for (int i = 0; i < polygonSides; i++)
         {
             polygon.push_back(Point2f(sin(angle), cos(angle)));
-            angle += 6.283 / polygonSides;
+            angle += CV_2PI / polygonSides;
         }
 
         // add edge transforms to map edge 0 to all other edges
@@ -84,8 +84,6 @@ public:
             );
         }
 
-
-        cout << "Settings changed: " << transforms.size() << " transforms, offspringTemporalRandomness: " << offspringTemporalRandomness << endl;
 
         // clear and initialize the queue with the seed
 
@@ -104,11 +102,6 @@ public:
         rootNode.color = cv::Scalar(1, 1, 1, 1);
     }
 
-
-    virtual cv::Rect_<float> getBoundingRect() const override
-    {
-        return cv::Rect_<float>(-maxRadius, -maxRadius, 2 * maxRadius, 2 * maxRadius);
-    }
 
     virtual bool isViable(qnode const &node) const override
     {
@@ -213,9 +206,6 @@ public:
                 );
             }
         }
-
-        cout << "Settings changed: polygon:"<<polygon.size()<<" transforms:" << transforms.size() 
-            << " offspringTemporalRandomness: " << offspringTemporalRandomness << endl;
     }
 
 };
@@ -286,10 +276,6 @@ public:
         //transforms[1].colorTransform = util::colorSink(0.5f,1.0f,1.0f, 0.3f);
         //transforms[2].colorTransform = util::colorSink(0.9f,0.5f,0.0f, 0.8f);
 
-
-
-        cout << "Settings changed: TrapezoidTree:" << polygon.size() << " transforms:" << transforms.size()
-            << " offspringTemporalRandomness: " << offspringTemporalRandomness << endl;
     }
 
     virtual void createRootNode(qnode & rootNode) override
@@ -370,18 +356,6 @@ public:
                     );
             }
         }
-
-        //transforms[0].gestation = 1111.1;
-
-        //transforms[0].colorTransform = util::colorSink(1.0f,1.0f,1.0f, 0.5f);
-        //transforms[0].colorTransform = util::colorSink(0.0f,0.5f,0.0f, 0.8f);
-        //transforms[1].colorTransform = util::colorSink(0.5f,1.0f,1.0f, 0.3f);
-        //transforms[2].colorTransform = util::colorSink(0.9f,0.5f,0.0f, 0.8f);
-
-
-
-        cout << "Settings changed: ThornTree:" << polygon.size() << " transforms:" << transforms.size()
-            << " offspringTemporalRandomness: " << offspringTemporalRandomness << endl;
     }
 
     virtual void createRootNode(qnode & rootNode) override
