@@ -314,7 +314,7 @@ public:
     {
         SelfAvoidantPolygonTree::randomizeSettings(randomize);
 
-        fieldResolution = 200;
+        fieldResolution = 50;
         maxRadius = 20;
         offspringTemporalRandomness = 100;
     }
@@ -338,22 +338,36 @@ public:
 
         // override edge transforms
         transforms.clear();
-        auto ct1 = util::colorSink(util::hsv2bgr(66.0, 1.0, 0.5), 0.3);
-        auto ct2 = util::colorSink(util::hsv2bgr(192.0, 1.0, 0.5), 0.3);
+        //auto ct1 = util::colorSink(util::hsv2bgr( 10.0, 1.0, 0.75), 0.3);
+        //auto ct2 = util::colorSink(util::hsv2bgr(200.0, 1.0, 0.75), 0.3);
+
+        std::vector<Matx44> colors;
+        double sat = util::r();
+        double v = util::r();
+        colors.push_back(util::colorSink(util::hsv2bgr(util::r()*360.0, sat, v), 0.5 * util::r()));
+        colors.push_back(util::colorSink(util::hsv2bgr(util::r()*360.0, sat, v), 0.5 * util::r()));
+        colors.push_back(util::colorSink(util::hsv2bgr(util::r()*360.0, sat, v), 0.5 * util::r()));
+        auto icolor = colors.begin();
+
         for (int i = 0; i < polygon.size(); ++i)
         {
             for (int j = 0; j < polygon.size(); ++j)
             {
-                transforms.push_back(
-                    qtransform(
-                        util::transform3x3::getEdgeMap(polygon[i], polygon[(i + 1) % polygon.size()], polygon[(j + 1) % polygon.size()], polygon[j]),
-                        ct1)
-                );
-                transforms.push_back(
-                    qtransform(
-                        util::transform3x3::getMirroredEdgeMap(polygon[i], polygon[(i + 1) % polygon.size()], polygon[j], polygon[(j + 1) % polygon.size()]),
-                        ct2)
-                );
+                if (++icolor == colors.end())
+                    icolor = colors.begin();
+
+                if(rand() % 10 == 0)
+                    transforms.push_back(
+                        qtransform(
+                            util::transform3x3::getEdgeMap(polygon[i], polygon[(i + 1) % polygon.size()], polygon[(j + 1) % polygon.size()], polygon[j]),
+                            *icolor)
+                    );
+                if (rand() % 10 == 0)
+                    transforms.push_back(
+                        qtransform(
+                            util::transform3x3::getMirroredEdgeMap(polygon[i], polygon[(i + 1) % polygon.size()], polygon[j], polygon[(j + 1) % polygon.size()]),
+                            *icolor)
+                    );
             }
         }
 
