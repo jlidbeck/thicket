@@ -1,4 +1,4 @@
-#include "HexGridTree.h"
+#include "SelfAvoidantPolygonTree.h"
 #include "GridTree.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
