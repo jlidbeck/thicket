@@ -6,6 +6,7 @@
 #include <random>
 #include <vector>
 #include <iostream>
+#include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <array>
 
@@ -372,6 +373,13 @@ public:
     virtual void createRootNode(qnode & rootNode) override
     {
         rootNode.color = cv::Scalar(1,1,1, 1);
+    }
+
+    virtual void saveImage(fs::path imagePath) override
+    {
+        // save the intersection field mask
+        imagePath = imagePath.replace_extension("mask.png");
+        cv::imwrite(imagePath.string(), m_field);
     }
 
 };

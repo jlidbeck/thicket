@@ -4,6 +4,9 @@
 #include <opencv2/core/core.hpp>
 #include <vector>
 #include <queue>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 
 class qcanvas;
@@ -199,7 +202,7 @@ public:
 
     virtual void drawNode(qcanvas &canvas, qnode const &node);
 
-
+    virtual void saveImage(fs::path imagePath) { };
 };
 
 

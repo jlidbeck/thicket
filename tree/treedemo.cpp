@@ -62,6 +62,8 @@ public:
         while (1)
         {
             cout << "Starting run.\n";
+            cout << tree.getSettingsString();
+
 
             std::chrono::steady_clock::time_point startTime = std::chrono::steady_clock::now();
             double lastReportTime = 0;
@@ -136,16 +138,19 @@ public:
 
         case 's':
         {
-            fs::path imagePath = "temp0001.png";
+            fs::path imagePath = "tree0001.png";
             char filename[24];
             for (int count = 1; fs::exists(imagePath); ++count)
             {
-                sprintf_s(filename, "temp%04d.png", count);
+                sprintf_s(filename, "tree%04d.png", count);
                 imagePath = filename;
             }
 
             cv::imwrite(imagePath.string(), canvas.image);
             std::cout << "Image saved: " << imagePath << std::endl;
+
+            tree.saveImage(imagePath);
+
             return true;
         }
 
