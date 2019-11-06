@@ -337,8 +337,8 @@ public:
 
         // override edge transforms
         transforms.clear();
-        auto ct1 = util::colorSink(util::hsv2bgr(72.0, 1.0, 0.5), 0.5);
-        auto ct2 = util::colorSink(util::hsv2bgr(192.0, 1.0, 0.5), 0.5);
+        auto ct1 = util::colorSink(util::hsv2bgr(66.0, 1.0, 0.5), 0.3);
+        auto ct2 = util::colorSink(util::hsv2bgr(192.0, 1.0, 0.5), 0.3);
         for (int i = 0; i < polygon.size(); ++i)
         {
             for (int j = 0; j < polygon.size(); ++j)
