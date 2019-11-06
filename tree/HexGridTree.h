@@ -297,3 +297,81 @@ public:
     }
 
 };
+
+
+cv::Point2f headingStep(float angleDegrees)
+{
+    float a = 3.14159265f*angleDegrees / 180.0f;
+    
+    return cv::Point2f(cos(a), sin(a));
+}
+
+class ThornTree : public SelfAvoidantPolygonTree
+{
+public:
+    virtual void randomizeSettings(int randomize) override
+    {
+        SelfAvoidantPolygonTree::randomizeSettings(randomize);
+
+        fieldResolution = 200;
+        maxRadius = 20;
+        offspringTemporalRandomness = 100;
+    }
+
+    virtual void create() override
+    {
+        SelfAvoidantPolygonTree::create();
+
+        // override polygon
+        polygon.clear();
+        cv::Point2f pt(0, 0);
+        polygon.push_back(pt);
+        polygon.push_back(pt += headingStep(0));
+        polygon.push_back(pt += headingStep(120));
+        polygon.push_back(pt += headingStep(105));
+        polygon.push_back(pt += headingStep(90));
+        polygon.push_back(pt += headingStep(75));
+        polygon.push_back(pt += headingStep(240));
+        polygon.push_back(pt += headingStep(255));
+        polygon.push_back(pt += headingStep(270));
+
+        // override edge transforms
+        transforms.clear();
+        auto ct1 = util::colorSink(util::hsv2bgr(72.0, 1.0, 0.5), 0.5);
+        auto ct2 = util::colorSink(util::hsv2bgr(192.0, 1.0, 0.5), 0.5);
+        for (int i = 0; i < polygon.size(); ++i)
+        {
+            for (int j = 0; j < polygon.size(); ++j)
+            {
+                transforms.push_back(
+                    qtransform(
+                        util::transform3x3::getEdgeMap(polygon[i], polygon[(i + 1) % polygon.size()], polygon[(j + 1) % polygon.size()], polygon[j]),
+                        ct1)
+                );
+                transforms.push_back(
+                    qtransform(
+                        util::transform3x3::getMirroredEdgeMap(polygon[i], polygon[(i + 1) % polygon.size()], polygon[j], polygon[(j + 1) % polygon.size()]),
+                        ct2)
+                );
+            }
+        }
+
+        //transforms[0].gestation = 1111.1;
+
+        //transforms[0].colorTransform = util::colorSink(1.0f,1.0f,1.0f, 0.5f);
+        //transforms[0].colorTransform = util::colorSink(0.0f,0.5f,0.0f, 0.8f);
+        //transforms[1].colorTransform = util::colorSink(0.5f,1.0f,1.0f, 0.3f);
+        //transforms[2].colorTransform = util::colorSink(0.9f,0.5f,0.0f, 0.8f);
+
+
+
+        cout << "Settings changed: ThornTree:" << polygon.size() << " transforms:" << transforms.size()
+            << " offspringTemporalRandomness: " << offspringTemporalRandomness << endl;
+    }
+
+    virtual void createRootNode(qnode & rootNode) override
+    {
+        rootNode.color = cv::Scalar(1,1,1, 1);
+    }
+
+};

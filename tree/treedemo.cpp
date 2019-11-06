@@ -29,7 +29,7 @@ public:
     ScaledPolygonTree tree4;
     TrapezoidTree tree5;
 
-    qtree &tree = tree5;
+    ThornTree tree;
 
     int minNodesProcessedPerFrame = 1;
     int maxNodesProcessedPerFrame = 64;
