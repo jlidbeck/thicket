@@ -37,36 +37,51 @@ public:
     int presetIndex = 12;
     float imagePadding = 0.1f;
 
+    // current model
+    double modelTime;
+    // current model run stats
+    int totalNodesProcessed;
+    std::chrono::steady_clock::time_point startTime;    // wall-clock time
+    double lastReportTime;                              // wall-clock time
+
+    // commands
+    bool restart = true;
+    bool quit = false;
+
     void run()
     {
-        tree.randomizeSettings(presetIndex);
-        tree.create();
-
-        cv::Mat3b img(cv::Size(1200, 800));
-        img = 0;
-
-        canvas.create(img);
-        canvas.setScaleToFit(tree.getBoundingRect(), imagePadding);
-
-        //qtransform  t1( 30, halfRoot(6), cv::Point2f(0, 90)),
-        //            t2(-30, halfRoot(6), cv::Point2f(0, 60));
-
-        //qtransform  t1( 90, halfRoot(2), cv::Point2f(0,  0.9)),
-        //            t2(-90, halfRoot(2), cv::Point2f(0, -0.9));
 
         while (1)
         {
-            cout << "Starting run.\n";
-            cout << tree.getSettingsString();
+            if (restart)
+            {
+                cout << "Starting run.\n";
 
+                tree.randomizeSettings(presetIndex);
+                tree.create();
 
-            std::chrono::steady_clock::time_point startTime = std::chrono::steady_clock::now();
-            double lastReportTime = 0;
+                json settingsJson = tree.getSettings();
+                cout << settingsJson << endl;
 
-            double modelTime = 0;
-            int totalNodesProcessed = 0;
+                canvas.image = cv::Mat3b(400, 400);
+                canvas.image = 0;
+                canvas.setScaleToFit(tree.getBoundingRect(), imagePadding);
 
-            while (!tree.nodeQueue.empty())
+                // update display
+                imshow("Memtest", canvas.image); // Show our image inside it.
+
+                startTime = std::chrono::steady_clock::now();
+                lastReportTime = 0;
+
+                modelTime = 0;
+                totalNodesProcessed = 0;
+
+                restart = false;
+            }
+
+            int key = -1;
+
+            while (key<0 && !tree.nodeQueue.empty())
             {
                 int nodesProcessed = 0;
                 while (!tree.nodeQueue.empty()
@@ -104,24 +119,37 @@ public:
                 std::chrono::duration<double> lapsed = std::chrono::duration_cast<std::chrono::duration<double>>(t - startTime);
                 if (lapsed.count() - lastReportTime > 1.0)
                 {
-                    lastReportTime = lapsed.count();
-                    cout << std::setw(8) << lapsed.count() << ": " << totalNodesProcessed << " nodes processed (" << ((double)totalNodesProcessed) / lapsed.count() << "/s)" << endl;
+                    showReport();
                 }
 
-                int key = cv::waitKey(1);
-                if (!processKey(key))
-                    return;
+                key = cv::waitKey(1);
+            }   // while(no key pressed and not complete)
+
+            processKey(key);
+
+            if (quit) return;
+
+            if (restart) continue;
+
+            if (tree.nodeQueue.empty())
+            {
+                showReport();
+                cout << "Run complete.\n";
+
+                cout << "'s' to save, 'r' to randomize, ESC to quit.\n";
+                int key = cv::waitKey(0);
+                processKey(key);
             }
 
-            std::chrono::steady_clock::time_point t = std::chrono::steady_clock::now();
-            std::chrono::duration<double> lapsed = std::chrono::duration_cast<std::chrono::duration<double>>(t - startTime);
-            cout << std::setw(8) << lapsed.count() << ": " << totalNodesProcessed << " nodes processed (" << ((double)totalNodesProcessed) / lapsed.count() << "/s)" << endl;
-            cout << "Run complete. 's' to save, 'r' to randomize, ESC to quit.\n";
-            int key = cv::waitKey(0);
-            if (!processKey(key))
-                return;
+        }   // while(1)
+    }
 
-        }
+    void showReport()
+    {
+        std::chrono::steady_clock::time_point t = std::chrono::steady_clock::now();
+        std::chrono::duration<double> lapsed = std::chrono::duration_cast<std::chrono::duration<double>>(t - startTime);
+        lastReportTime = lapsed.count();
+        cout << std::setw(8) << lapsed.count() << ": " << totalNodesProcessed << " nodes processed (" << ((double)totalNodesProcessed) / lapsed.count() << "/s)" << endl;
     }
 
     bool processKey(int key)
@@ -157,11 +185,10 @@ public:
 
         case 'r':
         {
-            canvas.image = 0;
-            presetIndex = (++presetIndex);
-            tree.randomizeSettings(presetIndex);
-            tree.create();
-            canvas.setScaleToFit(tree.getBoundingRect(), imagePadding);
+            // restart with new random settings
+            ++presetIndex;
+            maxNodesProcessedPerFrame = 64;
+            restart = true;
             return true;
         }
 
@@ -175,15 +202,13 @@ public:
         {
             // restart with current settings
             maxNodesProcessedPerFrame = 64;
-            canvas.image = 0;
-            //presetIndex = (presetIndex + ReptileTree::NUM_PRESETS) % (ReptileTree::NUM_PRESETS * 2);
-            tree.create();
-            canvas.setScaleToFit(tree.getBoundingRect(), imagePadding);
+            restart = true;
             return true;
         }
 
         case 27:    // ESC
         default:
+            quit = true;
             return false;
         }
 
