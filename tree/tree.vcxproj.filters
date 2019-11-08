@@ -13,4 +13,7 @@
     <ClInclude Include="util.h" />
     <ClInclude Include="SelfAvoidantPolygonTree.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
 </Project>
