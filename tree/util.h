@@ -2,6 +2,7 @@
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc.hpp>
+#include <opencv2/core/affine.hpp>
 #include <vector>
 
 
@@ -176,6 +177,17 @@ namespace util
 
 
     template<typename _Tp>
+    cv::Matx<_Tp, 4, 4> scaleAndTranslate(_Tp sx, _Tp sy, _Tp sz, _Tp tx, _Tp ty, _Tp tz)
+    {
+        return cv::Matx<_Tp, 4, 4>(
+            sx, 0, 0, tx,
+            0, sy, 0, ty,
+            0, 0, sz, tz,
+            0, 0, 0,  1);
+    }
+
+
+    template<typename _Tp>
     cv::Matx<_Tp, 4, 4> colorSink(cv::Matx<_Tp, 4, 1> const &color, _Tp a)
     {
         return cv::Matx<_Tp, 4, 4>(
@@ -206,7 +218,40 @@ namespace util
             0, 0, 0, 1);
     }
 
+    template<typename _Tp>
+    cv::Matx<_Tp, 4, 4> hsvTransform(_Tp hueShift, _Tp satScale, _Tp valScale)
+    {
+        return cv::Matx<_Tp, 4, 4>(
+            1, 0,        0,         hueShift,
+            0, satScale, 0,         0,
+            0, 0,        valScale,  0,
+            0, 0,        0,         1);
+    }
+
+    template<typename _Tp>
+    cv::Matx<_Tp, 4, 4> colorSpin(double a)
+    {
+        double b = 1.0 - a;
+        return cv::Matx<_Tp, 4, 4>(
+            b, a, 0, 0,
+            0, b, a, 0,
+            a, 0, b, 0,
+            0, 0, 0, 1);
+    }
+
     inline cv::Scalar toColor(cv::Matx<float, 4, 1> const &m) { return cv::Scalar(255.0 * m(0), 255.0 * m(1), 255.0 * m(2), 255.0 * m(3)); }
+
+#pragma region HSV
+
+    // h: 0.0-360.0; s: 0.0-1.0; v: 0.0-1.0
+
+    inline cv::Scalar cvtColor(cv::Scalar const &v, cv::ColorConversionCodes cvtCode)
+    {
+        cv::Mat3f mat(1, 1, cv::Vec3f(v(0), v(1), v(2)));
+        cv::cvtColor(mat, mat, cvtCode);
+        auto const &p = mat(0, 0);
+        return cv::Scalar(p(0), p(1), p(2), 1.0);
+    }
 
     template<typename _Tp>
     inline cv::Scalar hsv2bgr(_Tp h, _Tp s, _Tp v)
@@ -215,6 +260,16 @@ namespace util
         cv::cvtColor(mat, mat, cv::ColorConversionCodes::COLOR_HSV2BGR);
         return (mat(0, 0));
     }
+
+    template<typename _Tp>
+    inline cv::Scalar bgr2hsv(_Tp b, _Tp g, _Tp r)
+    {
+        cv::Mat3f mat(1, 1, cv::Vec3f((float)b, (float)g, (float)r));
+        cv::cvtColor(mat, mat, cv::ColorConversionCodes::COLOR_BGR2HSV);
+        return (mat(0, 0));
+    }
+
+#pragma endregion
 
     template<class _T>
     void clear(_T &container)
