@@ -6,6 +6,9 @@
 #include <queue>
 #include <filesystem>
 #include <random>
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
 
 namespace fs = std::filesystem;
 
@@ -83,28 +86,37 @@ public:
 namespace std
 {
     template<typename _Tp>
-    string to_string(std::vector<cv::Point_<_Tp> > const &polygon)
+    json to_json(std::vector<cv::Point_<_Tp> > const &polygon)
     {
-        return std::string("[]");
+        json jm = json::array();
+        for (auto &pt : polygon)
+        {
+            jm.push_back(pt.x);
+            jm.push_back(pt.y);
+        }
+        return jm;
     }
 
     template<typename _Tp, int m, int n>
-    string to_string(cv::Matx<_Tp, m, n> const &mat)
+    json to_json(cv::Matx<_Tp, m, n> const &mat)
     {
-        auto sz = std::string("[ ");
+        json jm = json::array();
         for (int i = 0; i < m; ++i)
             for (int j = 0; j < n; ++j)
-                sz += std::to_string(mat(i, j)) + (j < n - 1 ? ", " : ",\n  ");
-        return sz + " ]";
+                jm[i].push_back((float)mat(i, j));
+                //sz += std::to_string(mat(i, j)) + (j < n - 1 ? ", " : i < n - 1 ? ",\n  " : "\n  ]");
+        return jm;
     }
 
     template<typename _Tp>
-    std::string to_string(qtransform const &t)
+    json to_json(qtransform const &t)
     {
-        return std::string("{ transform: ") + to_string(t.transformMatrix)
-            + ",\n    color: " + to_string(t.colorTransform)
-            + ",\n    gestation: " + to_string(t.gestation)
-            + "\n}";
+        json j = {
+            { "transform", to_json(t.transformMatrix) },
+            { "color", to_json(t.colorTransform) },
+            { "gestation", t.gestation }
+        };
+        return j;
     }
 }
 
@@ -157,6 +169,7 @@ class qtree
 public:
     // settings
     double maxRadius = 100.0;
+    int randomSeed = 0;
 
     // same polygon for all nodes
     std::vector<cv::Point2f> polygon;
@@ -170,17 +183,22 @@ public:
 public:
     qtree() {}
 
-    virtual void randomizeSettings(int seed) { }
-    virtual std::string getSettingsString() const
+    virtual void randomizeSettings(int seed)
     {
-        std::string sz = "{ transforms:[\n";
+        randomSeed = seed;
+        prng.seed(seed);
+    }
+
+    virtual json getSettings() const
+    {
+        json j;
+        j["randomSeed"] = randomSeed;
+        j["maxRadius"] = (maxRadius);
+        j["polygon"] = std::to_json(polygon);
         for (auto &t : transforms)
-            sz += std::to_string<float>(t) + ",\n";
-        sz += "],\n  offspringTemporalRandomness:" + std::to_string(offspringTemporalRandomness)
-            + ",\n  maxRadius:" + std::to_string(maxRadius)
-            + ",\n  polygon:" + std::to_string(polygon)
-            + "\n}";
-        return sz;
+            j["transforms"].push_back(std::to_json<float>(t));
+        j["offspringTemporalRandomness"] = offspringTemporalRandomness;
+        return j;
     }
 
     virtual void create() = 0;

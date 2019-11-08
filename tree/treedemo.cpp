@@ -4,6 +4,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <iostream>
+#include <fstream>
 #include <filesystem>
 #include <vector>
 #include <chrono>
@@ -141,9 +142,15 @@ public:
             }
 
             cv::imwrite(imagePath.string(), canvas.image);
-            std::cout << "Image saved: " << imagePath << std::endl;
 
+            // allow extending classes to customize the save
             tree.saveImage(imagePath);
+
+            // save the settings too
+            std::ofstream outfile(imagePath.replace_extension("settings.json"));
+            outfile << std::setw(4) << tree.getSettings();
+
+            std::cout << "Image saved: " << imagePath << std::endl;
 
             return true;
         }

@@ -38,7 +38,7 @@ public:
 
     virtual void randomizeSettings(int randomize)
     {
-        prng.seed(randomize);
+        qtree::randomizeSettings(randomize);
 
         maxRadius = 100.0;
         polygonSides = 5;
@@ -152,6 +152,15 @@ public:
     {
         cv::bitwise_or(m_field, m_fieldLayer, m_field);
     }
+
+    virtual json getSettings() const override
+    {
+        json j = qtree::getSettings();
+        j["name"] = "SelfAvoidantPolygonTree";
+        j["fieldResolution"] = fieldResolution;
+        return j;
+    }
+
 
 };
 
@@ -371,5 +380,13 @@ public:
         imagePath = imagePath.replace_extension("mask.png");
         cv::imwrite(imagePath.string(), m_field);
     }
+
+    virtual json getSettings() const override
+    {
+        json j = SelfAvoidantPolygonTree::getSettings();
+        j["name"] = "ThornTree";
+        return j;
+    }
+
 
 };

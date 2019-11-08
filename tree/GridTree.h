@@ -166,8 +166,8 @@ public:
                 } };
 
             transforms = { {
-                    qtransform(90, halfRoot(2), cv::Point2f(0,  0.9)),
-                    qtransform(-90, halfRoot(2), cv::Point2f(0, -0.9))
+                    qtransform( 90.0, halfRoot(2), cv::Point2f(0,  0.9)),
+                    qtransform(-90.0, halfRoot(2), cv::Point2f(0, -0.9))
                 } };
 
             m_rootNode.globalTransform = util::transform3x3::getRotationMatrix2D(cv::Point2f(), 90, 1);
@@ -179,12 +179,12 @@ public:
         case 1:
             polygon = { {
                     // L
-                    {0.0f,0},{0.62,0},{0.62f,0.3f},{0.3f,0.3f},{0.3f,1},{0,1}
+                    {0.0f,0},{0.62f,0},{0.62f,0.3f},{0.3f,0.3f},{0.3f,1},{0,1}
                 } };
 
             transforms = { {
-                    qtransform(90, halfRoot(2), cv::Point2f(0,  0.9)),
-                    qtransform(-90, halfRoot(2), cv::Point2f(0, -0.9))
+                    qtransform( 90.0, halfRoot(2), cv::Point2f(0,  0.9f)),
+                    qtransform(-90.0, halfRoot(2), cv::Point2f(0, -0.9f))
                 } };
 
             m_rootNode.globalTransform = util::transform3x3::getRotationMatrix2D(cv::Point2f(), 90, 1);
@@ -332,17 +332,17 @@ public:
             offspringTemporalRandomness = 1 + r(100.0);
         }
 
-        cout << "ReptileTree settings: " << getSettingsString() << endl;
-
         // clear and initialize the queue with the seed
 
         util::clear(nodeQueue);
         nodeQueue.push(m_rootNode);
     }
 
-    virtual std::string getSettingsString() const override
+    virtual json getSettings() const override
     {
-        return std::string("ReptileTree: ") + qtree::getSettingsString();
+        json j = qtree::getSettings();
+        j["name"] = "ReptileTree";
+        return j;
     }
 
     virtual cv::Rect_<float> getBoundingRect() const override
