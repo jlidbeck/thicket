@@ -143,7 +143,7 @@ public:
                 showReport();
                 cout << "Run complete.\n";
 
-                cout << "'s' to save, 'r' to randomize, ESC to quit.\n";
+                cout << "'s' to save, 'r' to randomize, +/- to change radius, ESC to quit.\n";
                 int key = cv::waitKey(0);
                 processKey(key);
             }
@@ -251,6 +251,16 @@ public:
             randomize = true;
             return true;
         }
+
+        case '+':
+            tree.maxRadius *= 2.0f;
+            restart = true;
+            break;
+
+        case '-':
+            tree.maxRadius *= 0.5f;
+            restart = true;
+            break;
 
         case '.':
         {

@@ -26,6 +26,9 @@ protected:
 
     int fieldResolution = 10;   // pixels per unit
 
+    // minimum scale (relative to rootNode) considered for new nodes
+    float minimumScale = 0.05f; 
+
     // intersection field
     cv::Mat1b m_field;
     mutable cv::Mat1b m_fieldLayer;
@@ -60,13 +63,13 @@ public:
     {
         qtree::setRandomSeed(randomize);
 
-        maxRadius = 100.0;
+        maxRadius = 10.0;
         polygonSides = 5;
         offspringTemporalRandomness = 1000;
 
         if (randomize)
         {
-            maxRadius = 5.0 + r(100.0);
+            maxRadius = 5.0 + r(40.0);
             polygonSides = (randomize % 6) + 3;
 
             offspringTemporalRandomness = r(200.0);
@@ -114,8 +117,11 @@ public:
     {
         rootNode.beginTime = 0;
         rootNode.generation = 0;
-        rootNode.globalTransform = rootNode.globalTransform.eye();
-        rootNode.color = cv::Scalar(1, 1, 1, 1);
+        rootNode.color = cv::Scalar(0, 0, 1, 1);
+
+        // center root node at origin
+        auto centroid = util::polygon::centroid(polygon);
+        rootNode.globalTransform = util::transform3x3::getScaleTranslate(1.0f, -centroid.x, -centroid.y);
     }
 
 
@@ -124,14 +130,14 @@ public:
         if (!node) 
             return false;
 
-        if (fabs(node.det()) < 0.01f)
+        if (fabs(node.det()) < minimumScale*minimumScale)
             return false;
 
         // since the node polygon is centered at its local origin, its global
 		// centroid is simply the translation from its transform matrix
         cv::Matx<float, 3, 1> center(node.globalTransform(0, 2), node.globalTransform(1, 2), 1.0f);
 
-        if (center(0) < -maxRadius || center(0)>maxRadius || center(1) < -maxRadius || center(1)>maxRadius) 
+        if(center(0)*center(0) + center(1)*center(1) > maxRadius*maxRadius)
             return false;
 
         // quick check field pixel at transformed node center
@@ -139,18 +145,30 @@ public:
         if (m_field.at<uchar>(fieldPt(1), fieldPt(0)))
             return false;
 
-        drawField(node);
+        if (!drawField(node))
+            return false;   // out of image bounds
+
         thread_local cv::Mat andmat;
         cv::bitwise_and(m_field, m_fieldLayer, andmat);
         return(!cv::countNonZero(andmat));
     }
 
-    //  draw node on field layer to detect collisions
-    void drawField(qnode const &node) const
+    //  draw node on field stage layer to prepare for collision detection
+    //  full collision detection is not done here, but this function returns false if out-of-bounds or other
+    //  quick detection means that this node is not viable.
+    bool drawField(qnode const &node) const
     {
         Matx33 m = m_fieldTransform * node.globalTransform;
 
         vector<cv::Point2f> v;
+
+        // first, transform model polygon to model global coordinates to test against maxRadius
+        cv::transform(polygon, v, node.globalTransform.get_minor<2, 3>(0, 0));
+        for (auto const& p : v)
+            if (p.dot(p) > maxRadius*maxRadius)
+                return false;
+
+        // transform model polygon to field coords
         cv::transform(polygon, v, m.get_minor<2, 3>(0, 0));
         vector<vector<cv::Point> > pts(1);
         for (auto const& p : v)
@@ -160,6 +178,8 @@ public:
         cv::fillPoly(m_fieldLayer, pts, cv::Scalar(255), cv::LineTypes::LINE_8);
         // reduce by drawing outline in black, since OpenCV fillPoly draws extra pixels along edge
         cv::polylines(m_fieldLayer, pts, true, cv::Scalar(0), 1);
+		
+		return true;
     }
 
     // update field image: composite new node
