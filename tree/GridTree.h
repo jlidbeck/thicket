@@ -50,11 +50,6 @@ public:
     GridTree() { }
 	
 
-    void randomizeSettings(int seed) override
-    {
-
-    }
-
     void create() override
     {
         offspringTemporalRandomness = 1000;
@@ -141,13 +136,8 @@ private:
 
 public:
     static const int NUM_PRESETS = 8;
-    int settingsPreset = -1;
 
 public:
-    virtual void randomizeSettings(int n) override
-    {
-        settingsPreset = n;
-    }
 
     virtual void create() override
     {
@@ -156,7 +146,7 @@ public:
         m_rootNode.color = cv::Scalar(0.5, 0.5, 0.5, 1);
         m_rootNode.globalTransform = Matx33::eye();
 
-        switch (settingsPreset % NUM_PRESETS)
+        switch (randomSeed % NUM_PRESETS)
         {
         case 0:
             // H hourglass
@@ -321,7 +311,7 @@ public:
 
         offspringTemporalRandomness = 1000;
 
-        if (settingsPreset >= NUM_PRESETS)
+        if (randomSeed >= NUM_PRESETS)
         {
             for (auto &t : transforms)
             {

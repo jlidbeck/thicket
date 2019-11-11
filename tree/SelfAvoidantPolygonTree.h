@@ -36,9 +36,9 @@ public:
 
     SelfAvoidantPolygonTree() { }
 
-    virtual void randomizeSettings(int randomize)
+    virtual void setRandomSeed(int randomize)
     {
-        qtree::randomizeSettings(randomize);
+        qtree::setRandomSeed(randomize);
 
         maxRadius = 100.0;
         polygonSides = 5;
@@ -55,6 +55,8 @@ public:
 
     virtual void create() override
     {
+        prng.seed(randomSeed);
+
         // initialize intersection field
         int size = (int)(0.5 + maxRadius * 2 * fieldResolution);
         m_field.create(size, size);
@@ -164,9 +166,9 @@ class ScaledPolygonTree : public SelfAvoidantPolygonTree
     bool m_ambidextrous;
 
 public:
-    virtual void randomizeSettings(int randomize) override
+    virtual void setRandomSeed(int randomize) override
     {
-        SelfAvoidantPolygonTree::randomizeSettings(randomize);
+        SelfAvoidantPolygonTree::setRandomSeed(randomize);
 
         fieldResolution = 200;
         maxRadius = 3.5;
@@ -217,9 +219,9 @@ public:
 class TrapezoidTree : public SelfAvoidantPolygonTree
 {
 public:
-    virtual void randomizeSettings(int randomize) override
+    virtual void setRandomSeed(int randomize) override
     {
-        SelfAvoidantPolygonTree::randomizeSettings(randomize);
+        SelfAvoidantPolygonTree::setRandomSeed(randomize);
 
         fieldResolution = 200;
         maxRadius = 10;
@@ -289,13 +291,12 @@ public:
 };
 
 
-
 class ThornTree : public SelfAvoidantPolygonTree
 {
 public:
-    virtual void randomizeSettings(int randomize) override
+    virtual void setRandomSeed(int randomize) override
     {
-        SelfAvoidantPolygonTree::randomizeSettings(randomize);
+        SelfAvoidantPolygonTree::setRandomSeed(randomize);
 
         fieldResolution = 50;
         maxRadius = 20;

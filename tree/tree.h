@@ -109,15 +109,30 @@ namespace std
     }
 
     template<typename _Tp>
-    json to_json(qtransform const &t)
+    nlohmann::json to_json(qtransform const &t)
     {
-        json j = {
+        nlohmann::json j = {
             { "transform", to_json(t.transformMatrix) },
             { "color", to_json(t.colorTransform) },
             { "gestation", t.gestation }
         };
         return j;
     }
+
+    template<typename _Tp>
+    bool from_json(nlohmann::json const &j, std::vector<cv::Point_<_Tp> > &polygon)
+    {
+        if (!j.is_array()) return false;
+
+        polygon.clear();
+        polygon.reserve(j.size());
+
+        for (int i = 0; i < j.size(); i += 2)
+            polygon.push_back(cv::Point2f(j[i], j[i + 1]));
+
+        return true;
+    }
+
 }
 
 
@@ -183,7 +198,7 @@ public:
 public:
     qtree() {}
 
-    virtual void randomizeSettings(int seed)
+    virtual void setRandomSeed(int seed)
     {
         randomSeed = seed;
         prng.seed(seed);

@@ -34,7 +34,7 @@ public:
     int minNodesProcessedPerFrame = 1;
     int maxNodesProcessedPerFrame = 64;
 
-    int presetIndex = 12;
+    int presetIndex = 0;
     float imagePadding = 0.1f;
 
     // current model
@@ -46,7 +46,10 @@ public:
 
     // commands
     bool restart = true;
+    bool randomize = true;
     bool quit = false;
+
+    int mostRecentFileIndex = 0;
 
     void run()
     {
@@ -57,7 +60,11 @@ public:
             {
                 cout << "Starting run.\n";
 
-                tree.randomizeSettings(presetIndex);
+                if (randomize)
+                {
+                    tree.setRandomSeed(++presetIndex);
+                    randomize = false;
+                }
                 tree.create();
 
                 json settingsJson = tree.getSettings();
@@ -186,9 +193,9 @@ public:
         case 'r':
         {
             // restart with new random settings
-            ++presetIndex;
             maxNodesProcessedPerFrame = 64;
             restart = true;
+            randomize = true;
             return true;
         }
 
