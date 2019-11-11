@@ -36,6 +36,26 @@ public:
 
     SelfAvoidantPolygonTree() { }
 
+    virtual json getSettings() const override
+    {
+        json j = qtree::getSettings();
+        j["name"] = "SelfAvoidantPolygonTree";
+        j["fieldResolution"] = fieldResolution;
+        j["polygonSides"] = polygonSides;
+        return j;
+    }
+
+    virtual bool settingsFromJson(json const &j) override
+    {
+        if (!qtree::settingsFromJson(j))
+            return false;
+
+        fieldResolution = j["fieldResolution"];
+        polygonSides = j["polygonSides"];
+
+        return true;
+    }
+
     virtual void setRandomSeed(int randomize)
     {
         qtree::setRandomSeed(randomize);
@@ -148,15 +168,6 @@ public:
         cv::bitwise_or(m_field, m_fieldLayer, m_field);
     }
 
-    virtual json getSettings() const override
-    {
-        json j = qtree::getSettings();
-        j["name"] = "SelfAvoidantPolygonTree";
-        j["fieldResolution"] = fieldResolution;
-        return j;
-    }
-
-
 };
 
 
@@ -184,6 +195,28 @@ public:
 
         m_ratio = ratioPresets[randomize%ratioPresets.size()];
         m_ambidextrous = (randomize % 2);
+    }
+
+    virtual json getSettings() const override
+    {
+        json j = SelfAvoidantPolygonTree::getSettings();
+
+        j["name"] = "ScaledPolygonTree";
+        j["ratio"] = m_ratio;
+        j["ambidextrous"] = m_ambidextrous;
+
+        return j;
+    }
+
+    virtual bool settingsFromJson(json const &j) override
+    {
+        if (!SelfAvoidantPolygonTree::settingsFromJson(j))
+            return false;
+
+        m_ratio = j["ratio"];
+        m_ambidextrous = j["ambidextrous"];
+
+        return true;
     }
 
     virtual void create() override

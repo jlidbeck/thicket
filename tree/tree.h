@@ -8,7 +8,7 @@
 #include <random>
 #include <nlohmann/json.hpp>
 
-using json = nlohmann::json;
+using json = nlohmann::basic_json<>;
 
 namespace fs = std::filesystem;
 
@@ -83,12 +83,14 @@ public:
     }
 };
 
-namespace std
+namespace util
 {
+    //using json = nlohmann::json;
+
     template<typename _Tp>
-    json to_json(std::vector<cv::Point_<_Tp> > const &polygon)
+    nlohmann::json to_json(std::vector<cv::Point_<_Tp> > const &polygon)
     {
-        json jm = json::array();
+        nlohmann::json jm = nlohmann::json::array();
         for (auto &pt : polygon)
         {
             jm.push_back(pt.x);
@@ -98,9 +100,9 @@ namespace std
     }
 
     template<typename _Tp, int m, int n>
-    json to_json(cv::Matx<_Tp, m, n> const &mat)
+    nlohmann::json to_json(cv::Matx<_Tp, m, n> const &mat)
     {
-        json jm = json::array();
+        nlohmann::json jm = nlohmann::json::array();
         for (int i = 0; i < m; ++i)
             for (int j = 0; j < n; ++j)
                 jm[i].push_back((float)mat(i, j));
@@ -209,11 +211,20 @@ public:
         json j;
         j["randomSeed"] = randomSeed;
         j["maxRadius"] = (maxRadius);
-        j["polygon"] = std::to_json(polygon);
+        j["polygon"] = util::to_json(polygon);
         for (auto &t : transforms)
-            j["transforms"].push_back(std::to_json<float>(t));
+            j["transforms"].push_back(util::to_json<float>(t));
         j["offspringTemporalRandomness"] = offspringTemporalRandomness;
         return j;
+    }
+
+    virtual bool settingsFromJson(json const &j)
+    {
+        randomSeed = j["randomSeed"];
+        maxRadius = j["maxRadius"];
+        util::from_json(j["polygon"], polygon);
+        offspringTemporalRandomness = j["offspringTemporalRandomness"];
+        return true;
     }
 
     virtual void create() = 0;

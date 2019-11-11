@@ -159,6 +159,26 @@ public:
         cout << std::setw(8) << lapsed.count() << ": " << totalNodesProcessed << " nodes processed (" << ((double)totalNodesProcessed) / lapsed.count() << "/s)" << endl;
     }
 
+    //  finds most recent file and sets {mostRecentFileIndex}.
+    //  mostRecentFileIndex will be set to 0 if no saved files are found
+    void findMostRecentFile()
+    {
+        mostRecentFileIndex = 0;
+
+        fs::path jsonPath;
+        char filename[40];
+        for (int i=1; i <= 999; ++i)
+        {
+            sprintf_s(filename, "tree%04d.settings.json", i);
+            if (fs::exists(filename))
+                mostRecentFileIndex = i;
+
+            sprintf_s(filename, "tree%04d.png", i);
+            if (fs::exists(filename))
+                mostRecentFileIndex = i;
+        }
+    }
+
     bool processKey(int key)
     {
         switch (key)
@@ -168,13 +188,16 @@ public:
 
         case 's':
         {
-            fs::path imagePath = "tree0001.png";
-            char filename[24];
-            for (int count = 1; fs::exists(imagePath); ++count)
+            if (mostRecentFileIndex == 0)
             {
-                sprintf_s(filename, "tree%04d.png", count);
-                imagePath = filename;
+                findMostRecentFile();
             }
+
+            ++mostRecentFileIndex;
+            fs::path imagePath;
+            char filename[24];
+            sprintf_s(filename, "tree%04d.png", mostRecentFileIndex);
+            imagePath = filename;
 
             cv::imwrite(imagePath.string(), canvas.image);
 
@@ -188,6 +211,36 @@ public:
             std::cout << "Image saved: " << imagePath << std::endl;
 
             return true;
+        }
+
+        case 'o':
+        {
+            if (mostRecentFileIndex == 0)
+            {
+                findMostRecentFile();
+            }
+
+            char filename[50];
+            sprintf_s(filename, "tree%04d.settings.json", mostRecentFileIndex);
+
+            try {
+                std::ifstream infile(filename);
+                json j;
+                infile >> j;
+
+                tree.settingsFromJson(j);
+
+                std::cout << "Settings read from: " << filename << std::endl;
+
+                restart = true;
+                randomize = false;
+
+                return true;
+            }
+            catch (std::exception &ex)
+            {
+                std::cout << "Failed to open " << filename << ":\n" << ex.what() << endl;
+            }
         }
 
         case 'r':
