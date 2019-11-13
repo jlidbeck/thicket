@@ -28,8 +28,9 @@ public:
     SelfAvoidantPolygonTree tree3;
     ScaledPolygonTree tree4;
     TrapezoidTree tree5;
-
     ThornTree tree;
+
+    qtree *pTree = nullptr;
 
     int minNodesProcessedPerFrame = 1;
     int maxNodesProcessedPerFrame = 64;
@@ -70,7 +71,7 @@ public:
                 json settingsJson = tree.getSettings();
                 cout << settingsJson << endl;
 
-                canvas.image = cv::Mat3b(400, 400);
+                canvas.image = cv::Mat3b(1200, 1200);
                 canvas.image = 0;
                 canvas.setScaleToFit(tree.getBoundingRect(), imagePadding);
 

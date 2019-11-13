@@ -31,8 +31,10 @@ protected:
 
     // intersection field
     cv::Mat1b m_field;
-    mutable cv::Mat1b m_fieldLayer;
     Matx33 m_fieldTransform;
+    // temp drawing layer, same size as field, for drawing individual nodes and checking for intersection
+    mutable cv::Mat1b m_fieldLayer;
+    mutable cv::Rect m_fieldLayerBoundingRect;
 
 
 public:
@@ -149,7 +151,7 @@ public:
             return false;   // out of image bounds
 
         thread_local cv::Mat andmat;
-        cv::bitwise_and(m_field, m_fieldLayer, andmat);
+        cv::bitwise_and(m_field(m_fieldLayerBoundingRect), m_fieldLayer(m_fieldLayerBoundingRect), andmat);
         return(!cv::countNonZero(andmat));
     }
 
@@ -174,18 +176,23 @@ public:
         for (auto const& p : v)
             pts[0].push_back(p);
 
-        m_fieldLayer = 0;
+        m_fieldLayerBoundingRect = cv::boundingRect(pts[0]);
+        if ((cv::Rect(0, 0, m_field.cols, m_field.rows) & m_fieldLayerBoundingRect) != m_fieldLayerBoundingRect)
+            return false;
+
+        m_fieldLayer(m_fieldLayerBoundingRect) = 0;
         cv::fillPoly(m_fieldLayer, pts, cv::Scalar(255), cv::LineTypes::LINE_8);
         // reduce by drawing outline in black, since OpenCV fillPoly draws extra pixels along edge
-        cv::polylines(m_fieldLayer, pts, true, cv::Scalar(0), 1);
-		
-		return true;
+        cv::polylines(m_fieldLayer, pts, true, cv::Scalar(0), 1, cv::LineTypes::LINE_8);
+        cv::polylines(m_fieldLayer, pts, true, cv::Scalar(0), 1, cv::LineTypes::LINE_AA);
+
+        return true;
     }
 
     // update field image: composite new node
     virtual void addNode(qnode &currentNode) override
     {
-        cv::bitwise_or(m_field, m_fieldLayer, m_field);
+        cv::bitwise_or(m_field(m_fieldLayerBoundingRect), m_fieldLayer(m_fieldLayerBoundingRect), m_field(m_fieldLayerBoundingRect));
     }
 
 };
@@ -325,9 +332,9 @@ public:
         );
 
         //transforms[0].gestation = 1111.1;
-        transforms[0].gestation = 6.2;
-        transforms[1].gestation = 1.0;
-        transforms[2].gestation = 7.3;
+        transforms[0].gestation = r(10.0);
+        transforms[1].gestation = r(10.0);
+        transforms[2].gestation = r(10.0);
 
         //transforms[0].colorTransform = util::colorSink(1.0f,1.0f,1.0f, 0.5f);
         //transforms[0].colorTransform = util::colorSink(0.0f,0.5f,0.0f, 0.8f);
@@ -351,9 +358,16 @@ public:
     {
         SelfAvoidantPolygonTree::setRandomSeed(randomize);
 
-        fieldResolution = 50;
-        maxRadius = 20;
-        offspringTemporalRandomness = 100;
+        fieldResolution = 20;
+        maxRadius = 50;
+        offspringTemporalRandomness = 0;
+    }
+
+    virtual json getSettings() const override
+    {
+        json j = SelfAvoidantPolygonTree::getSettings();
+        j["name"] = "ThornTree";
+        return j;
     }
 
     virtual void create() override
@@ -361,7 +375,17 @@ public:
         SelfAvoidantPolygonTree::create();
 
         // override polygon
-        util::polygon::createStar(polygon);
+        polygon.clear();
+        cv::Point2f pt(0, 0);
+        polygon.push_back(pt);
+        polygon.push_back(pt += util::polygon::headingStep(  0.0f));
+        polygon.push_back(pt += util::polygon::headingStep(120.0f));
+        polygon.push_back(pt += util::polygon::headingStep(105.0f));
+        polygon.push_back(pt += util::polygon::headingStep( 90.0f));
+        polygon.push_back(pt += util::polygon::headingStep( 75.0f));
+        polygon.push_back(pt += util::polygon::headingStep(240.0f));
+        polygon.push_back(pt += util::polygon::headingStep(255.0f));
+        polygon.push_back(pt += util::polygon::headingStep(270.0f));
 
         // override edge transforms
         transforms.clear();
@@ -369,12 +393,15 @@ public:
         //auto ct2 = util::colorSink(util::hsv2bgr(200.0, 1.0, 0.75), 0.3);
 
         std::vector<Matx44> colors;
-        std::uniform_real_distribution<double> dist{ 0.0,1.0 };
-        double sat = r();
-        double v = r();
-        colors.push_back(util::colorSink(util::hsv2bgr(r()*360.0, sat, v), 0.5 * r()));
-        colors.push_back(util::colorSink(util::hsv2bgr(r()*360.0, sat, v), 0.5 * r()));
-        colors.push_back(util::colorSink(util::hsv2bgr(r()*360.0, sat, v), 0.5 * r()));
+        // HLS space color transforms
+        //colors.push_back(util::scaleAndTranslate(1.0, 0.99, 1.0, 180.0*r()*r()-90.0, 0.0, 0.0));    // darken and hue-shift
+        //colors.push_back(util::colorSink( 20.0, 0.5, 1.0, 0.25));   // toward orange
+        //colors.push_back(util::colorSink(200.0, 0.5, 1.0, 0.25));   // toward blue
+        double lightness = 0.5;
+        double sat = 1.0;
+        colors.push_back(util::colorSink(r(720.0)-360.0, r(), sat, r(0.5)));
+        colors.push_back(util::colorSink(r(720.0)-360.0, r(), sat, r(0.5)));
+        colors.push_back(util::colorSink(r(720.0)-360.0, r(), sat, r(0.5)));
         auto icolor = colors.begin();
 
         for (int i = 0; i < polygon.size(); ++i)
@@ -402,21 +429,29 @@ public:
 
     virtual void createRootNode(qnode & rootNode) override
     {
-        rootNode.color = cv::Scalar(1,1,1, 1);
+        SelfAvoidantPolygonTree::createRootNode(rootNode);
+
+        rootNode.color = cv::Scalar(1.0, 1.0, 0.0, 1);
     }
 
+    virtual void beget(qnode const & parent, qtransform const & t, qnode & child) override
+    {
+        qtree::beget(parent, t, child);
+
+        // hsv color mutator
+        auto hls = util::cvtColor(parent.color, cv::ColorConversionCodes::COLOR_BGR2HLS);
+        hls = t.colorTransform*hls;
+        //hsv(0) += t.colorTransform(0, 3);
+        //hsv(2) *= t.colorTransform(2, 2);
+        child.color = util::cvtColor(hls, cv::ColorConversionCodes::COLOR_HLS2BGR);
+    }
+
+    // overriding to save intersection field mask as well
     virtual void saveImage(fs::path imagePath) override
     {
         // save the intersection field mask
         imagePath = imagePath.replace_extension("mask.png");
         cv::imwrite(imagePath.string(), m_field);
-    }
-
-    virtual json getSettings() const override
-    {
-        json j = SelfAvoidantPolygonTree::getSettings();
-        j["name"] = "ThornTree";
-        return j;
     }
 
 
