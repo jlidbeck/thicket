@@ -40,7 +40,7 @@ void qtree::beget(qnode const & parent, qtransform const & t, qnode & child)
 {
     child.generation = parent.generation + 1;
 
-    child.beginTime = parent.beginTime + t.gestation + r(offspringTemporalRandomness);
+    child.beginTime = parent.beginTime + t.gestation + (gestationRandomness>0.0 ? r(gestationRandomness) : 0.0);
 
     child.globalTransform = parent.globalTransform * t.transformMatrix;
 
@@ -65,10 +65,10 @@ void qtree::drawNode(qcanvas &canvas, qnode const &node)
     cv::Scalar color = 
         //(node.det() < 0) ? 255.0 * (cv::Scalar(1.0, 1.0, 1.0, 1.0) - node.color) : 
         255.0 * node.color;
-    //cv::Scalar lineColor = cv::Scalar(255, 255, 255, 255);
-    cv::Scalar lineColor = cv::Scalar(0);
     cv::fillPoly(canvas.image, pts, color, cv::LineTypes::LINE_AA, 4);
-    //cv::polylines(canvas.image, pts, true, lineColor, 1, cv::LineTypes::LINE_AA, 4);
+
+    if(lineThickness>0)
+        cv::polylines(canvas.image, pts, true, lineColor, lineThickness, cv::LineTypes::LINE_AA, 4);
 }
 
 

@@ -237,9 +237,15 @@ public:
 
     // same polygon for all nodes
     std::vector<cv::Point2f> polygon;
+
     std::vector<qtransform> transforms;
-    double offspringTemporalRandomness = 100.0;
     
+    double gestationRandomness = 0.0;
+
+    // draw settings
+    cv::Scalar lineColor = cv::Scalar(0);
+    int lineThickness = 1;
+
     // model
     std::mt19937 prng; //Standard mersenne_twister_engine with default seed
     std::priority_queue<qnode, std::deque<qnode>, qnode::EarliestFirst> nodeQueue;
@@ -272,7 +278,12 @@ public:
             j["transforms"].push_back(jt);
         }
 
-        j["offspringTemporalRandomness"] = offspringTemporalRandomness;
+        j["gestationRandomness"] = gestationRandomness;
+
+        j["drawSettings"] = json{
+            { "lineColor", util::toRgbHexString(lineColor) },
+            { "lineThickness", lineThickness }
+        };
     }
 
     //  Extending classes should override and invoke the base member as necessary
@@ -286,7 +297,10 @@ public:
         ::from_json( j.at("polygon"), polygon );
         ::from_json( j.at("transforms"), transforms );
 
-        offspringTemporalRandomness = j.at("offspringTemporalRandomness");
+        gestationRandomness = (j.contains("gestationRandomness") ? j.at("gestationRandomness").get<double>() : 0.0);
+
+        lineColor = util::fromRgbHexString(j.at("drawSettings").at("lineColor").get<std::string>().c_str());
+        lineThickness = j.at("drawSettings").at("lineThickness");
     }
 
     //  Registers a typed constructor lambda fn

@@ -241,6 +241,26 @@ namespace util
 
     inline cv::Scalar toColor(cv::Matx<float, 4, 1> const &m) { return cv::Scalar(255.0 * m(0), 255.0 * m(1), 255.0 * m(2), 255.0 * m(3)); }
 
+    //  Assumes provided Scalar is in BGR order and scaled 0..255; returns string as "RRGGBB"
+    inline std::string toRgbHexString(cv::Scalar const &bgr) 
+    {
+        char str[8];
+        sprintf_s(str, "%02x%02x%02x",
+            (uchar)(0.5 + bgr(2)),
+            (uchar)(0.5 + bgr(1)),
+            (uchar)(0.5 + bgr(0))
+        );
+        return str;
+    }
+
+    //  Assumes provided string is "RRGGBB"; returns Scalar in BGR order
+    inline cv::Scalar fromRgbHexString(char const * rgbString)
+    {
+        uint32_t rgb;
+        sscanf(rgbString, "%x", &rgb);
+        return cv::Scalar(rgb & 0xFF, (rgb >> 8) & 0xFF, (rgb >> 16) & 0xFF);
+    }
+
 #pragma region HSV
 
     // h: 0.0-360.0; s: 0.0-1.0; v: 0.0-1.0

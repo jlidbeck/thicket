@@ -52,7 +52,7 @@ public:
 
     void create() override
     {
-        offspringTemporalRandomness = 1000;
+        gestationRandomness = 1000;
 
         m_covered.clear();
 

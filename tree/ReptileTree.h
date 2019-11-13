@@ -195,7 +195,7 @@ public:
 
         }   // switch (settings % NUM_PRESETS)
 
-        offspringTemporalRandomness = 0;
+        gestationRandomness = 0;
 
         if (randomizeOnCreate)
         {
@@ -205,7 +205,7 @@ public:
                 t.gestation = 1 + r(500.0);
             }
 
-            offspringTemporalRandomness = 1 + r(100.0);
+            gestationRandomness = 1 + r(100.0);
         }
     }
 

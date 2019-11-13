@@ -68,14 +68,13 @@ public:
 
         maxRadius = 10.0;
         polygonSides = 5;
-        offspringTemporalRandomness = 0;
 
         if (randomize)
         {
             maxRadius = 5.0 + r(40.0);
             polygonSides = (randomize % 6) + 3;
 
-            offspringTemporalRandomness = r(200.0);
+            //gestationRandomness = r(200.0);
         }
 
         util::polygon::createRegularPolygon(polygon, polygonSides);
@@ -290,7 +289,7 @@ public:
 
         fieldResolution = 200;
         maxRadius = 10;
-        offspringTemporalRandomness = 10;
+        gestationRandomness = 10;
     }
 
     virtual void create() override
@@ -370,7 +369,7 @@ public:
 
         fieldResolution = 20;
         maxRadius = 50;
-        offspringTemporalRandomness = 0;
+        gestationRandomness = 0;
     }
 
     virtual void to_json(json &j) const override
