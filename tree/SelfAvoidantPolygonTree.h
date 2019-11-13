@@ -62,14 +62,7 @@ public:
         m_field.copyTo(m_fieldLayer);
         m_fieldTransform = util::transform3x3::getScaleTranslate((double)fieldResolution, maxRadius*fieldResolution, maxRadius*fieldResolution);
 
-        // create regular polygon
-        polygon.clear();
-        double angle = -CV_2PI / (polygonSides * 2);
-        for (int i = 0; i < polygonSides; i++)
-        {
-            polygon.push_back(Point2f(sin(angle), cos(angle)));
-            angle += CV_2PI / polygonSides;
-        }
+        util::polygon::createRegularPolygon(polygon, polygonSides);
 
         // add edge transforms to map edge 0 to all other edges
         transforms.clear();
@@ -296,12 +289,6 @@ public:
 };
 
 
-cv::Point2f headingStep(float angleDegrees)
-{
-    float a = 3.14159265f*angleDegrees / 180.0f;
-    
-    return cv::Point2f(cos(a), sin(a));
-}
 
 class ThornTree : public SelfAvoidantPolygonTree
 {
@@ -320,17 +307,7 @@ public:
         SelfAvoidantPolygonTree::create();
 
         // override polygon
-        polygon.clear();
-        cv::Point2f pt(0, 0);
-        polygon.push_back(pt);
-        polygon.push_back(pt += headingStep(0));
-        polygon.push_back(pt += headingStep(120));
-        polygon.push_back(pt += headingStep(105));
-        polygon.push_back(pt += headingStep(90));
-        polygon.push_back(pt += headingStep(75));
-        polygon.push_back(pt += headingStep(240));
-        polygon.push_back(pt += headingStep(255));
-        polygon.push_back(pt += headingStep(270));
+        util::polygon::createStar(polygon);
 
         // override edge transforms
         transforms.clear();

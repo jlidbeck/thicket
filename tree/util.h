@@ -277,4 +277,71 @@ namespace util
         container = _T();
     }
 
+    namespace polygon
+    {
+        template<typename _Tp>
+        cv::Point_<_Tp> centroid(std::vector<cv::Point_<_Tp> > &polygon)
+        {
+            cv::Point_<_Tp> sum;
+            for (auto const &pt : polygon)
+                sum += pt;
+            return sum / (_Tp)polygon.size();
+        }
+
+        template<typename _Tp>
+        cv::Point_<_Tp> headingStep(_Tp angleDegrees)
+        {
+            _Tp a = (_Tp)(CV_PI * angleDegrees / 180.0);
+
+            return cv::Point_<_Tp>(cos(a), sin(a));
+        }
+
+        //  creates regular polygon with vertices at unit distance from the origin
+        template<typename _Tp>
+        void createRegularCenteredPolygon(std::vector<cv::Point_<_Tp> > &polygon, int polygonSides)
+        {
+            polygon.clear();
+            for (int i = 0; i < polygonSides; i++)
+            {
+                float angle = ((float)i - 0.5f) * CV_2PI / polygonSides;
+                polygon.push_back(cv::Point2f(sin(angle), cos(angle)));
+            }
+        }
+
+        //  creates regular polygon with side length 1 and first edge from (0,0) to (1,0)
+        template<typename _Tp>
+        void createRegularPolygon(std::vector<cv::Point_<_Tp> > &polygon, int polygonSides)
+        {
+            polygon.clear();
+            cv::Point_<_Tp> pt(0, 0);
+            for (int i = 0; i < polygonSides; i++)
+            {
+                polygon.push_back(pt);
+                pt += headingStep((_Tp)(i * 360.0 / polygonSides));
+            }
+        }
+
+        //  creates regular star with {n} points of angle {a} and side length 1
+        template<typename _Tp>
+        void createStar(std::vector<cv::Point_<_Tp> > &polygon, int n, float a)
+        {
+            polygon.clear();
+            cv::Point2f pt(0, 0);
+            _Tp hdg = 0.0f;
+            a = 180.0f - a;
+            for (int i = 0; i < n; ++i)
+            {
+                polygon.push_back(pt += headingStep(hdg += a));
+                polygon.push_back(pt += headingStep(hdg += (360.0f / n - a)));
+            }
+        }
+
+        //  creates regular 5-pointed star with side length 1
+        template<typename _Tp>
+        void createStar(std::vector<cv::Point_<_Tp> > &polygon)
+        {
+            createStar(polygon, 5, 36.0f);
+        }
+    }
+
 }   // namespace util
