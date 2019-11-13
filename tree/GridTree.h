@@ -132,19 +132,17 @@ private:
     // settings
 
     qnode m_rootNode;
-    cv::Rect_<float> m_boundingRect;
 
 public:
     static const int NUM_PRESETS = 8;
 
 public:
 
-    virtual void create() override
+    virtual void setRandomSeed(int seed) override
     {
-        m_boundingRect = cv::Rect_<float>(0, 0, 0, 0);
+        qtree::setRandomSeed(seed);
 
-        m_rootNode.color = cv::Scalar(0.5, 0.5, 0.5, 1);
-        m_rootNode.globalTransform = Matx33::eye();
+        bool randomizeOnCreate = (randomSeed >= NUM_PRESETS);
 
         switch (randomSeed % NUM_PRESETS)
         {
@@ -161,8 +159,6 @@ public:
                 } };
 
             m_rootNode.globalTransform = util::transform3x3::getRotationMatrix2D(cv::Point2f(), 90, 1);
-
-            m_boundingRect = cv::Rect_<float>(-2, -2, 4, 4);
 
             break;
 
@@ -254,8 +250,6 @@ public:
 
             m_rootNode.color = cv::Scalar(0.5f, 0.75f, 1, 1);
 
-            m_boundingRect = cv::Rect_<float>(-2, -2, 4, 4);
-
             break;
         }
 
@@ -283,8 +277,6 @@ public:
 
             m_rootNode.color = cv::Scalar(1, 1, 1, 1);
 
-            m_boundingRect = cv::Rect_<float>(-2, -2, 4, 4);
-
             break;
         }
 
@@ -302,16 +294,14 @@ public:
 
             m_rootNode.color = cv::Scalar(1, 1, 1, 1);
 
-            m_boundingRect = cv::Rect_<float>(-3, -3, 7, 7);
-
             break;
         }
 
         }   // switch (settings % NUM_PRESETS)
 
-        offspringTemporalRandomness = 1000;
+        offspringTemporalRandomness = 0;
 
-        if (randomSeed >= NUM_PRESETS)
+        if (randomizeOnCreate)
         {
             for (auto &t : transforms)
             {
@@ -321,6 +311,12 @@ public:
 
             offspringTemporalRandomness = 1 + r(100.0);
         }
+    }
+
+    virtual void create() override
+    {
+        m_rootNode.color = cv::Scalar(0.5, 0.5, 0.5, 1);
+        m_rootNode.globalTransform = Matx33::eye();
 
         // clear and initialize the queue with the seed
 
@@ -349,14 +345,18 @@ public:
 
     virtual cv::Rect_<float> getBoundingRect() const override
     {
-        if (m_boundingRect.width == 0)
+        switch (randomSeed % NUM_PRESETS)
         {
-            vector<cv::Point2f> v;
-            m_rootNode.getPolyPoints(polygon, v);
-            return util::getBoundingRect(v);
+        case 0: return cv::Rect_<float>(-2, -2, 4, 4);
+        case 5: return cv::Rect_<float>(-2, -2, 4, 4);
+        case 6: return cv::Rect_<float>(-2, -2, 4, 4);
+        case 7: return cv::Rect_<float>(-3, -3, 7, 7);
         }
 
-        return m_boundingRect;
+        // true reptiles don't grow outside the initial bounds
+        vector<cv::Point2f> v;
+        m_rootNode.getPolyPoints(polygon, v);
+        return util::getBoundingRect(v);
     }
 };
 
