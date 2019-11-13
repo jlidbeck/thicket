@@ -18,9 +18,9 @@ using std::endl;
 //  These models limit growth by prohibiting self-intersection
 
 
-#pragma region SelfAvoidantPolygonTree
+#pragma region SelfLimitingPolygonTree
 
-class SelfAvoidantPolygonTree : public qtree
+class SelfLimitingPolygonTree : public qtree
 {
 protected:
     // settings
@@ -41,13 +41,13 @@ protected:
 
 public:
 
-    SelfAvoidantPolygonTree() { }
+    SelfLimitingPolygonTree() { }
 
     virtual void to_json(json &j) const override
     {
 	    qtree::to_json(j);
 
-        j["_class"] = "SelfAvoidantPolygonTree";
+        j["_class"] = "SelfLimitingPolygonTree";
         j["fieldResolution"] = fieldResolution;
         j["polygonSides"] = polygonSides;
     }
@@ -59,16 +59,16 @@ public:
         fieldResolution = j.at("fieldResolution");
 
         if(j.contains("polygonSides"))
-            polygonSides    = j.at("polygonSides");
+            polygonSides = j.at("polygonSides");
     }
 
-    virtual void setRandomSeed(int randomize)
+    virtual void setRandomSeed(int randomize) override
     {
         qtree::setRandomSeed(randomize);
 
         maxRadius = 10.0;
         polygonSides = 5;
-        offspringTemporalRandomness = 1000;
+        offspringTemporalRandomness = 0;
 
         if (randomize)
         {
@@ -77,18 +77,6 @@ public:
 
             offspringTemporalRandomness = r(200.0);
         }
-    }
-
-    virtual void create() override
-    {
-        prng.seed(randomSeed);
-
-        // initialize intersection field
-        int size = (int)(0.5 + maxRadius * 2 * fieldResolution);
-        m_field.create(size, size);
-        m_field = 0;
-        m_field.copyTo(m_fieldLayer);
-        m_fieldTransform = util::transform3x3::getScaleTranslate((double)fieldResolution, maxRadius*fieldResolution, maxRadius*fieldResolution);
 
         util::polygon::createRegularPolygon(polygon, polygonSides);
 
@@ -105,7 +93,18 @@ public:
                     util::colorSink(bgr, 0.7f))
             );
         }
+    }
 
+    virtual void create() override
+    {
+        prng.seed(randomSeed);
+
+        // initialize intersection field
+        int size = (int)(0.5 + maxRadius * 2 * fieldResolution);
+        m_field.create(size, size);
+        m_field = 0;
+        m_field.copyTo(m_fieldLayer);
+        m_fieldTransform = util::transform3x3::getScaleTranslate((double)fieldResolution, maxRadius*fieldResolution, maxRadius*fieldResolution);
 
         // clear and initialize the queue with the seed
 
@@ -198,13 +197,13 @@ public:
 
 };
 
-REGISTER_QTREE_TYPE(SelfAvoidantPolygonTree);
+REGISTER_QTREE_TYPE(SelfLimitingPolygonTree);
 
-#pragma endregion SelfAvoidantPolygonTree (abstract)
+#pragma endregion SelfLimitingPolygonTree (abstract)
 
 #pragma region ScaledPolygonTree
 
-class ScaledPolygonTree : public SelfAvoidantPolygonTree
+class ScaledPolygonTree : public SelfLimitingPolygonTree
 {
     double m_ratio;
     bool m_ambidextrous;
@@ -212,7 +211,7 @@ class ScaledPolygonTree : public SelfAvoidantPolygonTree
 public:
     virtual void setRandomSeed(int randomize) override
     {
-        SelfAvoidantPolygonTree::setRandomSeed(randomize);
+        SelfLimitingPolygonTree::setRandomSeed(randomize);
 
         fieldResolution = 200;
         maxRadius = 3.5;
@@ -232,7 +231,7 @@ public:
 
     virtual void to_json(json &j) const override
     {
-	    SelfAvoidantPolygonTree::to_json(j);
+	    SelfLimitingPolygonTree::to_json(j);
 
         j["_class"] = "ScaledPolygonTree";
         j["ratio"] = m_ratio;
@@ -241,7 +240,7 @@ public:
 
     virtual void from_json(json const &j) override
     {
-        SelfAvoidantPolygonTree::from_json(j);
+        SelfLimitingPolygonTree::from_json(j);
 
         m_ratio = j["ratio"];
         m_ambidextrous = j["ambidextrous"];
@@ -249,7 +248,7 @@ public:
 
     virtual void create() override
     {
-        SelfAvoidantPolygonTree::create();
+        SelfLimitingPolygonTree::create();
 
         // override edge transforms
         transforms.clear();
@@ -282,12 +281,12 @@ REGISTER_QTREE_TYPE(ScaledPolygonTree);
 
 #pragma region TrapezoidTree
 
-class TrapezoidTree : public SelfAvoidantPolygonTree
+class TrapezoidTree : public SelfLimitingPolygonTree
 {
 public:
     virtual void setRandomSeed(int randomize) override
     {
-        SelfAvoidantPolygonTree::setRandomSeed(randomize);
+        SelfLimitingPolygonTree::setRandomSeed(randomize);
 
         fieldResolution = 200;
         maxRadius = 10;
@@ -296,7 +295,7 @@ public:
 
     virtual void create() override
     {
-        SelfAvoidantPolygonTree::create();
+        SelfLimitingPolygonTree::create();
 
         // override polygon
         polygon = { { { -0.5f, -0.5f}, {0.5f, -0.5f}, {0.4f, 0.4f}, {-0.5f, 0.45f} } };
@@ -362,12 +361,12 @@ REGISTER_QTREE_TYPE(TrapezoidTree);
 
 #pragma region ThornTree
 
-class ThornTree : public SelfAvoidantPolygonTree
+class ThornTree : public SelfLimitingPolygonTree
 {
 public:
     virtual void setRandomSeed(int randomize) override
     {
-        SelfAvoidantPolygonTree::setRandomSeed(randomize);
+        SelfLimitingPolygonTree::setRandomSeed(randomize);
 
         fieldResolution = 20;
         maxRadius = 50;
@@ -376,19 +375,19 @@ public:
 
     virtual void to_json(json &j) const override
     {
-	    SelfAvoidantPolygonTree::to_json(j);
+	    SelfLimitingPolygonTree::to_json(j);
 		
         j["_class"] = "ThornTree";
     }
 
     virtual void from_json(json const &j) override
     {
-        SelfAvoidantPolygonTree::from_json(j);
+        SelfLimitingPolygonTree::from_json(j);
     }
 
     virtual void create() override
     {
-        SelfAvoidantPolygonTree::create();
+        SelfLimitingPolygonTree::create();
 
         // override polygon
         polygon.clear();
@@ -445,7 +444,7 @@ public:
 
     virtual void createRootNode(qnode & rootNode) override
     {
-        SelfAvoidantPolygonTree::createRootNode(rootNode);
+        SelfLimitingPolygonTree::createRootNode(rootNode);
 
         rootNode.color = cv::Scalar(1.0, 1.0, 0.0, 1);
     }

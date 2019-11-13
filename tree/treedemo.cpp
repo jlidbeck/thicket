@@ -1,5 +1,6 @@
-#include "SelfAvoidantPolygonTree.h"
+#include "SelfLimitingPolygonTree.h"
 #include "GridTree.h"
+#include "ReptileTree.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc.hpp>
@@ -23,7 +24,7 @@ public:
     cv::Mat loadedImage;
     qcanvas canvas;
 
-    ThornTree defaultTree;
+    SelfLimitingPolygonTree defaultTree;
     qtree *pTree = nullptr;
 
     int minNodesProcessedPerFrame = 1;

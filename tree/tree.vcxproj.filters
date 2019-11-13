@@ -11,7 +11,8 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="tree.h" />
     <ClInclude Include="util.h" />
-    <ClInclude Include="SelfAvoidantPolygonTree.h" />
+    <ClInclude Include="ReptileTree.h" />
+    <ClInclude Include="SelfLimitingPolygonTree.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
