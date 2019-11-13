@@ -52,6 +52,7 @@ public:
 class qtransform
 {
 public:
+    std::string transformMatrixKey;
     Matx33 transformMatrix;
     Matx44 colorTransform;
     double gestation;
@@ -83,59 +84,96 @@ public:
     }
 };
 
-namespace util
-{
-    //using json = nlohmann::json;
+    // serialize vector of points
 
     template<typename _Tp>
-    nlohmann::json to_json(std::vector<cv::Point_<_Tp> > const &polygon)
+    void to_json(json &j, std::vector<cv::Point_<_Tp> > const &polygon)
     {
-        nlohmann::json jm = nlohmann::json::array();
+        j = nlohmann::json::array();
         for (auto &pt : polygon)
         {
-            jm.push_back(pt.x);
-            jm.push_back(pt.y);
+            j.push_back(pt.x);
+            j.push_back(pt.y);
         }
-        return jm;
-    }
-
-    template<typename _Tp, int m, int n>
-    nlohmann::json to_json(cv::Matx<_Tp, m, n> const &mat)
-    {
-        nlohmann::json jm = nlohmann::json::array();
-        for (int i = 0; i < m; ++i)
-            for (int j = 0; j < n; ++j)
-                jm[i].push_back((float)mat(i, j));
-                //sz += std::to_string(mat(i, j)) + (j < n - 1 ? ", " : i < n - 1 ? ",\n  " : "\n  ]");
-        return jm;
     }
 
     template<typename _Tp>
-    nlohmann::json to_json(qtransform const &t)
+    void from_json(json const &j, std::vector<cv::Point_<_Tp> > &polygon)
     {
-        nlohmann::json j = {
-            { "transform", to_json(t.transformMatrix) },
-            { "color", to_json(t.colorTransform) },
-            { "gestation", t.gestation }
-        };
-        return j;
-    }
-
-    template<typename _Tp>
-    bool from_json(nlohmann::json const &j, std::vector<cv::Point_<_Tp> > &polygon)
-    {
-        if (!j.is_array()) return false;
+        if (!j.is_array())
+            throw(std::exception("Not JSON array type"));
 
         polygon.clear();
         polygon.reserve(j.size());
 
         for (int i = 0; i < j.size(); i += 2)
             polygon.push_back(cv::Point2f(j[i], j[i + 1]));
-
-        return true;
     }
 
-}
+    // serialize M x N matrix
+
+    template<typename _Tp, int m, int n>
+    void to_json(json &j, cv::Matx<_Tp, m, n> const &mat)
+    {
+        j = nlohmann::json::array();
+        for (int r = 0; r < m; ++r)
+            for (int c = 0; c < n; ++c)
+                j[r].push_back((float)mat(r, c));
+                //sz += std::to_string(mat(r, j)) + (j < n - 1 ? ", " : r < n - 1 ? ",\n  " : "\n  ]");
+    }
+
+    template<typename _Tp, int m, int n>
+    void from_json(json const &j, cv::Matx<_Tp, m, n> &mat)
+    {
+        for (int r = 0; r < m; ++r)
+            for (int c = 0; c < n; ++c)
+                mat(r, c) = j[r][c];
+        //sz += std::to_string(mat(r, j)) + (j < n - 1 ? ", " : r < n - 1 ? ",\n  " : "\n  ]");
+    }
+
+    template<typename _Tp, int m, int n>
+    void from_json(json const &j, std::vector<cv::Matx<_Tp, m, n> > &mats)
+    {
+        mats.resize(j.size());
+        for (int i = 0; i < j.size(); ++i)
+            from_json(j[i], mats[i]);
+    }
+
+
+    inline void to_json(json &j, qtransform const &t)
+    {
+        j = json {
+            { "gestation", t.gestation }
+        };
+
+        to_json(j["color"], t.colorTransform);
+
+        if(t.transformMatrixKey.empty())
+            to_json(j["transform"], t.transformMatrix);
+        else
+            j["transform"] = t.transformMatrixKey;
+    }
+
+    inline void to_json(json &j, std::vector<qtransform> const &transforms)
+    {
+        j = nlohmann::json::array();
+        for (int i = 0; i < transforms.size(); ++i)
+            to_json(j[i], transforms[i]);
+    }
+
+    inline void from_json(json const &j, qtransform &t)
+    {
+        t.gestation = j.at("gestation");
+        from_json(j.at("color"),     t.colorTransform);
+        from_json(j.at("transform"), t.transformMatrix);
+    }
+
+    inline void from_json(json const &j, std::vector<qtransform> &transforms)
+    {
+        transforms.resize(j.size());
+        for (int i = 0; i < j.size(); ++i)
+            from_json(j[i], transforms[i]);
+    }
 
 
 class qnode
@@ -181,8 +219,17 @@ public:
 };
 
 
+//  This macro should be invoked for each qtree-extending class
+//  It creates a global function pointer (which is never used)
+//  and registers a constructor lambda for the given qtree-derived class
+#define REGISTER_QTREE_TYPE(TYPE) \
+    auto g_constructor_ ## TYPE = qtree::registerConstructor(#TYPE, [](){ return new TYPE(); });
+
 class qtree
 {
+protected:
+    static std::map<std::string, std::function<qtree*()> > factoryTable;
+
 public:
     // settings
     double maxRadius = 100.0;
@@ -206,25 +253,77 @@ public:
         prng.seed(seed);
     }
 
-    virtual json getSettings() const
+#pragma region Serialization
+
+    //  Extending classes should override and invoke the base member as necessary
+    virtual void to_json(json &j) const
     {
-        json j;
+        //  extending classes need to override this value
+        j["_class"] = "qtree";
+
         j["randomSeed"] = randomSeed;
-        j["maxRadius"] = (maxRadius);
-        j["polygon"] = util::to_json(polygon);
+        j["maxRadius"] = maxRadius;
+
+        ::to_json(j["polygon"], polygon);
         for (auto &t : transforms)
-            j["transforms"].push_back(util::to_json<float>(t));
+        {
+            json jt;
+            ::to_json(jt, t);
+            j["transforms"].push_back(jt);
+        }
+
         j["offspringTemporalRandomness"] = offspringTemporalRandomness;
-        return j;
     }
 
-    virtual bool settingsFromJson(json const &j)
+    //  Extending classes should override and invoke the base member as necessary
+    virtual void from_json(json const &j)
     {
-        randomSeed = j["randomSeed"];
-        maxRadius = j["maxRadius"];
-        util::from_json(j["polygon"], polygon);
-        offspringTemporalRandomness = j["offspringTemporalRandomness"];
-        return true;
+        // using at() rather than [] so we get a proper exception on a missing key
+        // (rather than assert/abort with NDEBUG)
+
+        randomSeed = j.at("randomSeed");
+        maxRadius  = j.at("maxRadius");
+        ::from_json( j.at("polygon"), polygon );
+        ::from_json( j.at("transforms"), transforms );
+
+        offspringTemporalRandomness = j.at("offspringTemporalRandomness");
+    }
+
+    //  Registers a typed constructor lambda fn
+    static auto registerConstructor(std::string className, std::function<qtree*()> fn)
+    {
+        factoryTable[className] = fn;
+        return fn;
+    }
+
+    //  Factory method to create instances of registered qtree-extending classes
+    static qtree* createTreeFromJson(json const &j)
+    {
+        //  peek at the "_class" member of the json to see what class to instantiate
+
+        if (!j.contains("_class"))
+        {
+            throw(std::exception("Invalid JSON or missing \"_class\" key."));
+        }
+
+        std::string className = j["_class"];
+        if (factoryTable.find(className) == factoryTable.end())
+        {
+            std::string msg = std::string("Class not registered: '") + className + "'";
+            throw(std::exception(msg.c_str()));
+        }
+
+        auto pfn = factoryTable.at(className);
+        qtree* pPrototype = pfn();
+        pPrototype->from_json(j);
+        return pPrototype;
+    }
+
+    qtree* clone() const
+    {
+        json j;
+        to_json(j);
+        return qtree::createTreeFromJson(j);
     }
 
     virtual void create() = 0;

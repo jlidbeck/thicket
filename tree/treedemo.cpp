@@ -23,13 +23,7 @@ public:
     cv::Mat loadedImage;
     qcanvas canvas;
 
-    ReptileTree tree1;
-    GridTree tree2;
-    SelfAvoidantPolygonTree tree3;
-    ScaledPolygonTree tree4;
-    TrapezoidTree tree5;
-    ThornTree tree;
-
+    ThornTree defaultTree;
     qtree *pTree = nullptr;
 
     int minNodesProcessedPerFrame = 1;
@@ -52,6 +46,7 @@ public:
 
     int mostRecentFileIndex = 0;
 
+
     void run()
     {
 
@@ -61,19 +56,25 @@ public:
             {
                 cout << "Starting run.\n";
 
+                if (!pTree)
+                {
+                    pTree = &defaultTree;
+                }
+
                 if (randomize)
                 {
-                    tree.setRandomSeed(++presetIndex);
+                    pTree->setRandomSeed(++presetIndex);
                     randomize = false;
                 }
-                tree.create();
+                pTree->create();
 
-                json settingsJson = tree.getSettings();
+                json settingsJson;
+                pTree->to_json(settingsJson);
                 cout << settingsJson << endl;
 
                 canvas.image = cv::Mat3b(1200, 1200);
                 canvas.image = 0;
-                canvas.setScaleToFit(tree.getBoundingRect(), imagePadding);
+                canvas.setScaleToFit(pTree->getBoundingRect(), imagePadding);
 
                 // update display
                 imshow("Memtest", canvas.image); // Show our image inside it.
@@ -89,31 +90,31 @@ public:
 
             int key = -1;
 
-            while (key<0 && !tree.nodeQueue.empty())
+            while (key<0 && !pTree->nodeQueue.empty())
             {
                 int nodesProcessed = 0;
-                while (!tree.nodeQueue.empty()
+                while (!pTree->nodeQueue.empty()
                     && nodesProcessed < maxNodesProcessedPerFrame
-                    //&& tree.nodeQueue.top().det() >= cutoff 
-                    && (nodesProcessed < minNodesProcessedPerFrame || tree.nodeQueue.top().beginTime <= modelTime)
+                    //&& pTree->nodeQueue.top().det() >= cutoff 
+                    && (nodesProcessed < minNodesProcessedPerFrame || pTree->nodeQueue.top().beginTime <= modelTime)
                     )
                 {
-                    auto currentNode = tree.nodeQueue.top();
-                    if (!tree.isViable(currentNode))
+                    auto currentNode = pTree->nodeQueue.top();
+                    if (!pTree->isViable(currentNode))
                     {
-                        tree.nodeQueue.pop();
+                        pTree->nodeQueue.pop();
                         continue;
                     }
 
-                    tree.drawNode(canvas, currentNode);
+                    pTree->drawNode(canvas, currentNode);
 
                     nodesProcessed++;
-                    tree.process();
+                    pTree->process();
                     modelTime = currentNode.beginTime + 1.0;
                 }
 
                 // adjust scaling to fit.. can't do this yet b/c tree can't be redrawn
-                //canvas.setScaleToFit(tree.getBoundingRect());
+                //canvas.setScaleToFit(pTree->getBoundingRect());
 
                 // fade
                 //canvas.image *= 0.99;
@@ -139,7 +140,7 @@ public:
 
             if (restart) continue;
 
-            if (tree.nodeQueue.empty())
+            if (pTree->nodeQueue.empty())
             {
                 showReport();
                 cout << "Run complete.\n";
@@ -180,12 +181,12 @@ public:
         }
     }
 
-    bool processKey(int key)
+    void processKey(int key)
     {
         switch (key)
         {
         case -1:
-            return true; // no key pressed
+            return; // no key pressed
 
         case 's':
         {
@@ -203,15 +204,17 @@ public:
             cv::imwrite(imagePath.string(), canvas.image);
 
             // allow extending classes to customize the save
-            tree.saveImage(imagePath);
+            pTree->saveImage(imagePath);
 
             // save the settings too
             std::ofstream outfile(imagePath.replace_extension("settings.json"));
-            outfile << std::setw(4) << tree.getSettings();
+            json j;
+            pTree->to_json(j);
+            outfile << std::setw(4) << j;
 
             std::cout << "Image saved: " << imagePath << std::endl;
 
-            return true;
+            return;
         }
 
         case 'o':
@@ -221,27 +224,42 @@ public:
                 findMostRecentFile();
             }
 
+            int idx = -1;
+            cout << "The most recent file index is " << mostRecentFileIndex << ".\nEnter index: ";
+            std::cin >> idx;
+            if (idx < 0)
+                idx = mostRecentFileIndex;
+
             char filename[50];
-            sprintf_s(filename, "tree%04d.settings.json", mostRecentFileIndex);
+            sprintf_s(filename, "tree%04d.settings.json", idx);
+            cout << "Opening " << filename << "...\n";
 
             try {
                 std::ifstream infile(filename);
                 json j;
                 infile >> j;
-
-                tree.settingsFromJson(j);
+                pTree = qtree::createTreeFromJson(j);
 
                 std::cout << "Settings read from: " << filename << std::endl;
 
                 restart = true;
                 randomize = false;
 
-                return true;
+                return;
             }
             catch (std::exception &ex)
             {
                 std::cout << "Failed to open " << filename << ":\n" << ex.what() << endl;
             }
+            break;
+        }
+
+        case 'c':
+        {
+            pTree = pTree->clone();
+            restart = true;
+            cout << "Cloned\n";
+            return;
         }
 
         case 'r':
@@ -250,16 +268,16 @@ public:
             maxNodesProcessedPerFrame = 64;
             restart = true;
             randomize = true;
-            return true;
+            return;
         }
 
         case '+':
-            tree.maxRadius *= 2.0f;
+            pTree->maxRadius *= 2.0f;
             restart = true;
             break;
 
         case '-':
-            tree.maxRadius *= 0.5f;
+            pTree->maxRadius *= 0.5f;
             restart = true;
             break;
 
@@ -274,16 +292,15 @@ public:
             // restart with current settings
             maxNodesProcessedPerFrame = 64;
             restart = true;
-            return true;
+            return;
         }
 
         case 27:    // ESC
-        default:
+        case 'q':
             quit = true;
-            return false;
-        }
+            return;
 
-        return false;
+        }
     }
 
     int load(fs::path imagePath)

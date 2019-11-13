@@ -328,11 +328,23 @@ public:
         nodeQueue.push(m_rootNode);
     }
 
-    virtual json getSettings() const override
+    virtual void to_json(json &j) const override
     {
-        json j = qtree::getSettings();
-        j["name"] = "ReptileTree";
-        return j;
+	    qtree::to_json(j);
+
+        j["_class"] = "ReptileTree";
+    }
+
+    virtual void from_json(json const &j) override
+    {
+        try {
+            qtree::from_json(j);
+        }
+        catch (std::exception &ex)
+        {
+            // let's ignore exceptions for now
+            randomSeed = 42;
+        }
     }
 
     virtual cv::Rect_<float> getBoundingRect() const override
@@ -347,3 +359,5 @@ public:
         return m_boundingRect;
     }
 };
+
+REGISTER_QTREE_TYPE(ReptileTree);

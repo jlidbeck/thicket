@@ -18,6 +18,8 @@ using std::endl;
 //  These models limit growth by prohibiting self-intersection
 
 
+#pragma region SelfAvoidantPolygonTree
+
 class SelfAvoidantPolygonTree : public qtree
 {
 protected:
@@ -41,24 +43,23 @@ public:
 
     SelfAvoidantPolygonTree() { }
 
-    virtual json getSettings() const override
+    virtual void to_json(json &j) const override
     {
-        json j = qtree::getSettings();
-        j["name"] = "SelfAvoidantPolygonTree";
+	    qtree::to_json(j);
+
+        j["_class"] = "SelfAvoidantPolygonTree";
         j["fieldResolution"] = fieldResolution;
         j["polygonSides"] = polygonSides;
-        return j;
     }
 
-    virtual bool settingsFromJson(json const &j) override
+    virtual void from_json(json const &j) override
     {
-        if (!qtree::settingsFromJson(j))
-            return false;
+        qtree::from_json(j);
 
-        fieldResolution = j["fieldResolution"];
-        polygonSides = j["polygonSides"];
+        fieldResolution = j.at("fieldResolution");
 
-        return true;
+        if(j.contains("polygonSides"))
+            polygonSides    = j.at("polygonSides");
     }
 
     virtual void setRandomSeed(int randomize)
@@ -197,6 +198,11 @@ public:
 
 };
 
+REGISTER_QTREE_TYPE(SelfAvoidantPolygonTree);
+
+#pragma endregion SelfAvoidantPolygonTree (abstract)
+
+#pragma region ScaledPolygonTree
 
 class ScaledPolygonTree : public SelfAvoidantPolygonTree
 {
@@ -224,26 +230,21 @@ public:
         m_ambidextrous = (randomize % 2);
     }
 
-    virtual json getSettings() const override
+    virtual void to_json(json &j) const override
     {
-        json j = SelfAvoidantPolygonTree::getSettings();
+	    SelfAvoidantPolygonTree::to_json(j);
 
-        j["name"] = "ScaledPolygonTree";
+        j["_class"] = "ScaledPolygonTree";
         j["ratio"] = m_ratio;
         j["ambidextrous"] = m_ambidextrous;
-
-        return j;
     }
 
-    virtual bool settingsFromJson(json const &j) override
+    virtual void from_json(json const &j) override
     {
-        if (!SelfAvoidantPolygonTree::settingsFromJson(j))
-            return false;
+        SelfAvoidantPolygonTree::from_json(j);
 
         m_ratio = j["ratio"];
         m_ambidextrous = j["ambidextrous"];
-
-        return true;
     }
 
     virtual void create() override
@@ -275,6 +276,11 @@ public:
 
 };
 
+REGISTER_QTREE_TYPE(ScaledPolygonTree);
+
+#pragma endregion
+
+#pragma region TrapezoidTree
 
 class TrapezoidTree : public SelfAvoidantPolygonTree
 {
@@ -350,6 +356,11 @@ public:
 
 };
 
+REGISTER_QTREE_TYPE(TrapezoidTree);
+
+#pragma endregion
+
+#pragma region ThornTree
 
 class ThornTree : public SelfAvoidantPolygonTree
 {
@@ -363,11 +374,16 @@ public:
         offspringTemporalRandomness = 0;
     }
 
-    virtual json getSettings() const override
+    virtual void to_json(json &j) const override
     {
-        json j = SelfAvoidantPolygonTree::getSettings();
-        j["name"] = "ThornTree";
-        return j;
+	    SelfAvoidantPolygonTree::to_json(j);
+		
+        j["_class"] = "ThornTree";
+    }
+
+    virtual void from_json(json const &j) override
+    {
+        SelfAvoidantPolygonTree::from_json(j);
     }
 
     virtual void create() override
@@ -454,5 +470,8 @@ public:
         cv::imwrite(imagePath.string(), m_field);
     }
 
-
 };
+
+REGISTER_QTREE_TYPE(ThornTree);
+
+#pragma endregion
