@@ -29,6 +29,7 @@ public:
 
     int minNodesProcessedPerFrame = 1;
     int maxNodesProcessedPerFrame = 64;
+    bool stepping = false;
 
     int presetIndex = 0;
     float imagePadding = 0.1f;
@@ -45,7 +46,7 @@ public:
     bool randomize = true;
     bool quit = false;
 
-    int mostRecentFileIndex = 0;
+    int mostRecentFileIndex = -1;
 
 
     void run()
@@ -91,7 +92,7 @@ public:
 
             int key = -1;
 
-            while (key<0 && !pTree->nodeQueue.empty())
+            while (!pTree->nodeQueue.empty())
             {
                 int nodesProcessed = 0;
                 while (!pTree->nodeQueue.empty()
@@ -132,7 +133,14 @@ public:
                     showReport();
                 }
 
+                if (stepping) 
+                {
+                    key = cv::waitKey(0);
+                    break;
+                }
+
                 key = cv::waitKey(1);
+                if (key > 0) break;
             }   // while(no key pressed and not complete)
 
             processKey(key);
@@ -146,8 +154,8 @@ public:
                 showReport();
                 cout << "Run complete.\n";
 
-                cout << "'s' to save, 'r' to randomize, +/- to change radius, ESC to quit.\n";
-                int key = cv::waitKey(0);
+                cout << "'s' save, 'o','O' open, 'c',' ' restart, '.' step, 'r' randomize, 'l' line color, +/- model radius, ESC to quit.\n";
+                int key = cv::waitKey(-1);
                 processKey(key);
             }
 
@@ -162,24 +170,81 @@ public:
         cout << std::setw(8) << lapsed.count() << ": " << totalNodesProcessed << " nodes processed (" << ((double)totalNodesProcessed) / lapsed.count() << "/s)" << endl;
     }
 
-    //  finds most recent file and sets {mostRecentFileIndex}.
-    //  mostRecentFileIndex will be set to 0 if no saved files are found
-    void findMostRecentFile()
+    void openFile(int idx)
     {
-        mostRecentFileIndex = 0;
+        char filename[50];
+        sprintf_s(filename, "tree%04d.settings.json", idx);
+        cout << "Opening " << filename << "...\n";
+
+        try {
+            std::ifstream infile(filename);
+            json j;
+            infile >> j;
+            pTree = qtree::createTreeFromJson(j);
+
+            std::cout << "Settings read from: " << filename << std::endl;
+
+            restart = true;
+            randomize = false;
+        }
+        catch (std::exception &ex)
+        {
+            std::cout << "Failed to open " << filename << ":\n" << ex.what() << endl;
+        }
+    }
+
+    const int MAX = 1000;
+
+    //  finds most recent file and sets {mostRecentFileIndex}.
+
+    void findNextUnusedFileIndex()
+    {
+        mostRecentFileIndex = MAX;
+        findPreviousFile();
+        ++mostRecentFileIndex;
+    }
+
+    //  mostRecentFileIndex will be set to 0 if no saved files are found
+    void findPreviousFile()
+    {
+        if (mostRecentFileIndex < 0)
+            mostRecentFileIndex = 0;
 
         fs::path jsonPath;
         char filename[40];
-        for (int i=1; i <= 999; ++i)
+        for (int i=mostRecentFileIndex+MAX-1; (i%=MAX) != mostRecentFileIndex; i+=(MAX-1))
         {
             sprintf_s(filename, "tree%04d.settings.json", i);
             if (fs::exists(filename))
+            {
                 mostRecentFileIndex = i;
-
-            sprintf_s(filename, "tree%04d.png", i);
-            if (fs::exists(filename))
-                mostRecentFileIndex = i;
+                return;
+            }
         }
+
+        mostRecentFileIndex = -1;// nothing found
+    }
+
+    //  finds most recent file and sets {mostRecentFileIndex}.
+    //  mostRecentFileIndex will be set to 0 if no saved files are found
+    void findNextFile()
+    {
+        if (mostRecentFileIndex < 0)
+            mostRecentFileIndex = 0;
+
+        fs::path jsonPath;
+        char filename[40];
+        for (int i = mostRecentFileIndex+1; (i%=MAX) != mostRecentFileIndex; i+=(1))
+        {
+            sprintf_s(filename, "tree%04d.settings.json", i);
+            if (fs::exists(filename))
+            {
+                mostRecentFileIndex = i;
+                return;
+            }
+        }
+
+        mostRecentFileIndex = -1;// nothing found
     }
 
     void processKey(int key)
@@ -191,12 +256,8 @@ public:
 
         case 's':
         {
-            if (mostRecentFileIndex == 0)
-            {
-                findMostRecentFile();
-            }
+            findNextUnusedFileIndex();
 
-            ++mostRecentFileIndex;
             fs::path imagePath;
             char filename[24];
             sprintf_s(filename, "tree%04d.png", mostRecentFileIndex);
@@ -220,38 +281,30 @@ public:
 
         case 'o':
         {
-            if (mostRecentFileIndex == 0)
+            if (mostRecentFileIndex < 0)
             {
-                findMostRecentFile();
+                findPreviousFile();
             }
 
             int idx = -1;
-            cout << "The most recent file index is " << mostRecentFileIndex << ".\nEnter index: ";
+            cout << "Current file index is " << mostRecentFileIndex << ".\nEnter index: ";
             std::cin >> idx;
             if (idx < 0)
                 idx = mostRecentFileIndex;
+            openFile(idx);
+            break;
+        }
 
-            char filename[50];
-            sprintf_s(filename, "tree%04d.settings.json", idx);
-            cout << "Opening " << filename << "...\n";
+        case 2162688:   // PageUp
+            findPreviousFile();
+            openFile(mostRecentFileIndex);
+            break;
 
-            try {
-                std::ifstream infile(filename);
-                json j;
-                infile >> j;
-                pTree = qtree::createTreeFromJson(j);
-
-                std::cout << "Settings read from: " << filename << std::endl;
-
-                restart = true;
-                randomize = false;
-
-                return;
-            }
-            catch (std::exception &ex)
-            {
-                std::cout << "Failed to open " << filename << ":\n" << ex.what() << endl;
-            }
+        case 2228224:   // PageDown
+        case 'O':
+        {
+            findNextFile();
+            openFile(mostRecentFileIndex);
             break;
         }
 
@@ -266,7 +319,6 @@ public:
         case 'r':
         {
             // restart with new random settings
-            maxNodesProcessedPerFrame = 64;
             restart = true;
             randomize = true;
             return;
@@ -282,8 +334,26 @@ public:
             restart = true;
             break;
 
+        case 'l':   // cycle thru line options
+            if (pTree->lineThickness == 0)
+            {
+                pTree->lineThickness = 1;
+                pTree->lineColor = cv::Scalar(0, 0, 0);
+            }
+            else if (pTree->lineColor == cv::Scalar(0, 0, 0))
+            {
+                pTree->lineColor = cv::Scalar(255,255,255);
+            }
+            else
+            {
+                pTree->lineThickness = 0;
+            }
+            restart = true;
+            break;
+
         case '.':
         {
+            stepping = true;
             maxNodesProcessedPerFrame = 1;
             break;
         }
@@ -291,6 +361,7 @@ public:
         case ' ':
         {
             // restart with current settings
+            stepping = false;
             maxNodesProcessedPerFrame = 64;
             restart = true;
             return;
@@ -301,6 +372,8 @@ public:
             quit = true;
             return;
 
+        default:
+            cout << "? " << key << endl;
         }
     }
 
