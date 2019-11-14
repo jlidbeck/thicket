@@ -66,6 +66,14 @@ public:
         gestation = gestation_;
     }
 
+    qtransform(std::string key_, Matx33 const &transformMatrix_ = Matx33::eye(), Matx44 const &colorTransform_ = Matx44::eye(), double gestation_ = 1.0)
+    {
+        transformMatrixKey = key_;
+        transformMatrix = transformMatrix_;
+        colorTransform = colorTransform_;
+        gestation = gestation_;
+    }
+
     template<typename _Tp>
     qtransform(_Tp m00, _Tp m01, _Tp mtx, _Tp m10, _Tp m11, _Tp mty, Matx44 const &colorTransform_)
     {
@@ -148,10 +156,10 @@ public:
 
         to_json(j["color"], t.colorTransform);
 
-        if(t.transformMatrixKey.empty())
-            to_json(j["transform"], t.transformMatrix);
-        else
-            j["transform"] = t.transformMatrixKey;
+        if (!t.transformMatrixKey.empty())
+            j["transformKey"] = t.transformMatrixKey;
+
+        to_json(j["transform"], t.transformMatrix);
     }
 
     inline void to_json(json &j, std::vector<qtransform> const &transforms)
@@ -259,6 +267,8 @@ public:
         prng.seed(seed);
     }
 
+    virtual void randomizeTransforms(int flags) {};
+
 #pragma region Serialization
 
     //  Extending classes should override and invoke the base member as necessary
@@ -299,8 +309,11 @@ public:
 
         gestationRandomness = (j.contains("gestationRandomness") ? j.at("gestationRandomness").get<double>() : 0.0);
 
-        lineColor = util::fromRgbHexString(j.at("drawSettings").at("lineColor").get<std::string>().c_str());
-        lineThickness = j.at("drawSettings").at("lineThickness");
+        if (j.contains("drawSettings"))
+        {
+            lineColor = util::fromRgbHexString(j.at("drawSettings").at("lineColor").get<std::string>().c_str());
+            lineThickness = j.at("drawSettings").at("lineThickness");
+        }
     }
 
     //  Registers a typed constructor lambda fn
@@ -396,6 +409,42 @@ public:
 
 #pragma endregion
 
+    //  Returns a 2D transform (scale, rotate, reflect, and transform) that maps the source edge, 
+    //  or a specified segment of the source edge, to the target edge.
+    //  The matrix will have a nonnegative determinant unless mirror is specified.
+    //  Note:
+    //  Transform creates an external-to-external mapping, with the goal of placing tiles that align but do not overlap.
+    //  For example, if the source and target edges are the same, this function will compute a 180-degree rotation (if mirror==false), 
+    //  or a reflection over the line defined by the edge (if mirror==true).
+    //  If 0 < ratio0 < ratio1 < 1, transform will be a size reduction, aligning the entire mapped source edge to a subsegment of the premapped target edge.
+    qtransform createEdgeTransform(int parentEdge, int childEdge, bool mirror=false, float ratio0=0.0f, float ratio1=1.0f) const
+    {
+        auto parentEdgeString = std::string("E") + std::to_string(parentEdge);
+        if (ratio0 != 0.0f || ratio1 != 1.0f)
+            parentEdgeString += (std::string("[") + std::to_string(ratio0) + ":" + std::to_string(ratio1) + "]");
+        auto childEdgeString  = std::string("E") + std::to_string(childEdge);
+
+        auto p0 = polygon[parentEdge];
+        auto p1 = polygon[(parentEdge + 1) % polygon.size()];
+        auto midPt0 = (1.0f - ratio0) * p0 + ratio0 * p1;
+        auto midPt1 = (1.0f - ratio1) * p0 + ratio1 * p1;
+        auto c0 = polygon[childEdge];
+        auto c1 = polygon[(childEdge + 1) % polygon.size()];
+
+        if (mirror)
+        {
+            return qtransform(
+                parentEdgeString + ":-" + childEdgeString,
+                util::transform3x3::getMirroredEdgeMap(c0, c1, midPt0, midPt1)
+            );
+        }
+
+        return qtransform(
+            parentEdgeString + ":+" + childEdgeString,
+            util::transform3x3::getEdgeMap(c0, c1, midPt1, midPt0)
+        );
+
+    }
 };
 
 

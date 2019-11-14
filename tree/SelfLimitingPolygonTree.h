@@ -25,11 +25,14 @@ class SelfLimitingPolygonTree : public qtree
 protected:
     // settings
     int polygonSides = 5;
+    int starAngle = 0;
 
-    int fieldResolution = 10;   // pixels per unit
+    int fieldResolution = 40;   // pixels per unit
 
     // minimum scale (relative to rootNode) considered for new nodes
-    float minimumScale = 0.05f; 
+    float minimumScale = 0.01f; 
+
+    std::vector<Matx44> colorTransformPalette;
 
     // intersection field
     cv::Mat1b m_field;
@@ -37,7 +40,6 @@ protected:
     // temp drawing layer, same size as field, for drawing individual nodes and checking for intersection
     mutable cv::Mat1b m_fieldLayer;
     mutable cv::Rect m_fieldLayerBoundingRect;
-
 
 public:
 
@@ -50,6 +52,7 @@ public:
         j["_class"] = "SelfLimitingPolygonTree";
         j["fieldResolution"] = fieldResolution;
         j["polygonSides"] = polygonSides;
+        j["starAngle"] = starAngle;
     }
 
     virtual void from_json(json const &j) override
@@ -58,8 +61,8 @@ public:
 
         fieldResolution = j.at("fieldResolution");
 
-        if(j.contains("polygonSides"))
-            polygonSides = j.at("polygonSides");
+        polygonSides = (j.contains("polygonSides") ? j.at("polygonSides").get<int>() : 5);
+        starAngle    = (j.contains("starAngle"   ) ? j.at("starAngle"   ).get<int>() : 0);
     }
 
     virtual void setRandomSeed(int randomize) override
@@ -68,36 +71,66 @@ public:
 
         maxRadius = 10.0;
         polygonSides = 5;
+        starAngle = 36;
 
         if (randomize)
         {
             maxRadius = 5.0 + r(40.0);
             polygonSides = (randomize % 6) + 3;
-
+            starAngle = ((randomize % 12) < 6 ? 36 : 0);
             //gestationRandomness = r(200.0);
         }
 
-        util::polygon::createRegularPolygon(polygon, polygonSides);
+        if (starAngle)
+            util::polygon::createStar(polygon, polygonSides, starAngle);
+        else
+            util::polygon::createRegularPolygon(polygon, polygonSides);
 
-        // add edge transforms to map edge 0 to all other edges
+        // create set of edge transforms to map edge 0 to all other edges,
+        // child polygons will be potentially spawned whose 0 edge aligns with parent polygon's {i} edge
         transforms.clear();
-        for (int i = 1; i < polygonSides; ++i)
+        for (int i = 0; i < polygon.size(); ++i)
         {
-            Matx41 hsv((float)i/(float)polygonSides, 1.0, 0.5), bgr(1.0, 0.5, 0.0);
-            //cv::cvtColor(hsv, bgr, cv::ColorConversionCodes::COLOR_HSV2BGR);
-            bgr = randomColor();
-            transforms.push_back(
-                qtransform(
-                    util::transform3x3::getEdgeMap(polygon[polygonSides - 1], polygon[0], polygon[i], polygon[i - 1]),
-                    util::colorSink(bgr, 0.7f))
-            );
+            transforms.push_back(createEdgeTransform(i, 0));
+        }
+
+        randomizeTransforms(3);
+    }
+
+    //  Randomizes existing transforms: color, gestation
+    virtual void randomizeTransforms(int flags) override
+    {
+        if (flags & 1)
+        {
+            colorTransformPalette.clear();
+            // HLS space color transforms
+            //colorTransformPalette.push_back(util::scaleAndTranslate(1.0, 0.99, 1.0, 180.0*r()*r()-90.0, 0.0, 0.0));    // darken and hue-shift
+            //colorTransformPalette.push_back(util::colorSink( 20.0, 0.5, 1.0, 0.25));   // toward orange
+            //colorTransformPalette.push_back(util::colorSink(200.0, 0.5, 1.0, 0.25));   // toward blue
+            double lightness = 0.5;
+            double sat = 1.0;
+            colorTransformPalette.push_back(util::colorSink(r(720.0) - 360.0, 0.5 + r(0.5), sat, r(0.5)));
+            colorTransformPalette.push_back(util::colorSink(r(720.0) - 360.0, 0.5 + r(0.5), sat, r(0.5)));
+            colorTransformPalette.push_back(util::colorSink(r(720.0) - 360.0, 0.5 + r(0.5), sat, r(0.5)));
+        }
+
+        for (auto & t : transforms)
+        {
+            if (flags & 1)
+            {
+                int idx = r((int)colorTransformPalette.size());
+                t.colorTransform = colorTransformPalette[idx];
+            }
+
+            if (flags & 2)
+            {
+                t.gestation = 1.0 + r(10.0);
+            }
         }
     }
 
     virtual void create() override
     {
-        prng.seed(randomSeed);
-
         // initialize intersection field
         int size = (int)(0.5 + maxRadius * 2 * fieldResolution);
         m_field.create(size, size);
@@ -125,6 +158,18 @@ public:
         rootNode.globalTransform = util::transform3x3::getScaleTranslate(1.0f, -centroid.x, -centroid.y);
     }
 
+    virtual void beget(qnode const & parent, qtransform const & t, qnode & child) override
+    {
+        qtree::beget(parent, t, child);
+
+        // hsv color mutator
+        auto hls = util::cvtColor(parent.color, cv::ColorConversionCodes::COLOR_BGR2HLS);
+        hls = t.colorTransform*hls;
+        //hsv(0) += t.colorTransform(0, 3);
+        //hsv(2) *= t.colorTransform(2, 2);
+        child.color = util::cvtColor(hls, cv::ColorConversionCodes::COLOR_HLS2BGR);
+    }
+
 
     virtual bool isViable(qnode const &node) const override
     {
@@ -132,18 +177,6 @@ public:
             return false;
 
         if (fabs(node.det()) < minimumScale*minimumScale)
-            return false;
-
-        // since the node polygon is centered at its local origin, its global
-		// centroid is simply the translation from its transform matrix
-        cv::Matx<float, 3, 1> center(node.globalTransform(0, 2), node.globalTransform(1, 2), 1.0f);
-
-        if(center(0)*center(0) + center(1)*center(1) > maxRadius*maxRadius)
-            return false;
-
-        // quick check field pixel at transformed node center
-        auto fieldPt = m_fieldTransform * center;
-        if (m_field.at<uchar>(fieldPt(1), fieldPt(0)))
             return false;
 
         if (!drawField(node))
@@ -198,7 +231,7 @@ public:
 
 REGISTER_QTREE_TYPE(SelfLimitingPolygonTree);
 
-#pragma endregion SelfLimitingPolygonTree (abstract)
+#pragma endregion
 
 #pragma region ScaledPolygonTree
 
@@ -212,8 +245,8 @@ public:
     {
         SelfLimitingPolygonTree::setRandomSeed(randomize);
 
-        fieldResolution = 200;
-        maxRadius = 3.5;
+        fieldResolution = 100.0;
+        maxRadius = 4.0;
         
         // ratio: child size / parent size
         std::array<float, 5> ratioPresets = { {
@@ -225,7 +258,20 @@ public:
         } };
 
         m_ratio = ratioPresets[randomize%ratioPresets.size()];
-        m_ambidextrous = (randomize % 2);
+        m_ambidextrous = r(2);// (randomize % 2);
+
+        // override edge transforms
+        transforms.clear();
+        for (int i = 0; i < polygon.size(); ++i)
+        {
+            transforms.push_back(createEdgeTransform(i, polygon.size() - 1, false, 0.0f, m_ratio));
+
+            if (m_ambidextrous)
+                transforms.push_back(createEdgeTransform(i, polygon.size() - 1, true, 1.0f - m_ratio, 1.0f));
+
+        }
+
+        randomizeTransforms(3);
     }
 
     virtual void to_json(json &j) const override
@@ -249,27 +295,7 @@ public:
     {
         SelfLimitingPolygonTree::create();
 
-        // override edge transforms
-        transforms.clear();
-        for (int i = 1; i < polygon.size(); ++i)
-        {
-            auto edgePt1 = m_ratio * polygon[i - 1] + (1.0f - m_ratio)*polygon[i    ];
-            transforms.push_back(
-                qtransform(
-                    util::transform3x3::getEdgeMap(polygon[polygon.size() - 1], polygon[0], polygon[i], edgePt1),
-                    util::colorSink(randomColor(), 0.5))
-            );
 
-            if (m_ambidextrous)
-            {
-                auto edgePt2 = m_ratio * polygon[i    ] + (1.0f - m_ratio)*polygon[i - 1];
-                transforms.push_back(
-                    qtransform(
-                        util::transform3x3::getEdgeMap(polygon[polygon.size() - 1], polygon[0], edgePt2, polygon[i - 1]),
-                        util::colorSink(randomColor(), 0.5))
-                );
-            }
-        }
     }
 
 };
@@ -370,23 +396,6 @@ public:
         fieldResolution = 20;
         maxRadius = 50;
         gestationRandomness = 0;
-    }
-
-    virtual void to_json(json &j) const override
-    {
-	    SelfLimitingPolygonTree::to_json(j);
-		
-        j["_class"] = "ThornTree";
-    }
-
-    virtual void from_json(json const &j) override
-    {
-        SelfLimitingPolygonTree::from_json(j);
-    }
-
-    virtual void create() override
-    {
-        SelfLimitingPolygonTree::create();
 
         // override polygon
         polygon.clear();
@@ -406,39 +415,44 @@ public:
         //auto ct1 = util::colorSink(util::hsv2bgr( 10.0, 1.0, 0.75), 0.3);
         //auto ct2 = util::colorSink(util::hsv2bgr(200.0, 1.0, 0.75), 0.3);
 
-        std::vector<Matx44> colors;
-        // HLS space color transforms
-        //colors.push_back(util::scaleAndTranslate(1.0, 0.99, 1.0, 180.0*r()*r()-90.0, 0.0, 0.0));    // darken and hue-shift
-        //colors.push_back(util::colorSink( 20.0, 0.5, 1.0, 0.25));   // toward orange
-        //colors.push_back(util::colorSink(200.0, 0.5, 1.0, 0.25));   // toward blue
-        double lightness = 0.5;
-        double sat = 1.0;
-        colors.push_back(util::colorSink(r(720.0)-360.0, r(), sat, r(0.5)));
-        colors.push_back(util::colorSink(r(720.0)-360.0, r(), sat, r(0.5)));
-        colors.push_back(util::colorSink(r(720.0)-360.0, r(), sat, r(0.5)));
-        auto icolor = colors.begin();
-
         for (int i = 0; i < polygon.size(); ++i)
         {
             for (int j = 0; j < polygon.size(); ++j)
             {
-                if (++icolor == colors.end())
-                    icolor = colors.begin();
-
-                if(r(20) == 0)
+                if (r(20) == 0)
                     transforms.push_back(
                         qtransform(
-                            util::transform3x3::getEdgeMap(polygon[i], polygon[(i + 1) % polygon.size()], polygon[(j + 1) % polygon.size()], polygon[j]),
-                            *icolor)
+                            util::transform3x3::getEdgeMap(polygon[i], polygon[(i + 1) % polygon.size()], polygon[(j + 1) % polygon.size()], polygon[j])
+                        )
                     );
                 if (r(20) == 0)
                     transforms.push_back(
                         qtransform(
-                            util::transform3x3::getMirroredEdgeMap(polygon[i], polygon[(i + 1) % polygon.size()], polygon[j], polygon[(j + 1) % polygon.size()]),
-                            *icolor)
+                            util::transform3x3::getMirroredEdgeMap(polygon[i], polygon[(i + 1) % polygon.size()], polygon[j], polygon[(j + 1) % polygon.size()])
+                        )
                     );
             }
         }
+
+        randomizeTransforms(3);
+    }
+
+    virtual void to_json(json &j) const override
+    {
+	    SelfLimitingPolygonTree::to_json(j);
+		
+        j["_class"] = "ThornTree";
+    }
+
+    virtual void from_json(json const &j) override
+    {
+        SelfLimitingPolygonTree::from_json(j);
+    }
+
+    virtual void create() override
+    {
+        SelfLimitingPolygonTree::create();
+
     }
 
     virtual void createRootNode(qnode & rootNode) override
@@ -446,18 +460,6 @@ public:
         SelfLimitingPolygonTree::createRootNode(rootNode);
 
         rootNode.color = cv::Scalar(1.0, 1.0, 0.0, 1);
-    }
-
-    virtual void beget(qnode const & parent, qtransform const & t, qnode & child) override
-    {
-        qtree::beget(parent, t, child);
-
-        // hsv color mutator
-        auto hls = util::cvtColor(parent.color, cv::ColorConversionCodes::COLOR_BGR2HLS);
-        hls = t.colorTransform*hls;
-        //hsv(0) += t.colorTransform(0, 3);
-        //hsv(2) *= t.colorTransform(2, 2);
-        child.color = util::cvtColor(hls, cv::ColorConversionCodes::COLOR_HLS2BGR);
     }
 
     // overriding to save intersection field mask as well

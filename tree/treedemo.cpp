@@ -308,7 +308,7 @@ public:
             break;
         }
 
-        case 'c':
+        case 'C':
         {
             pTree = pTree->clone();
             restart = true;
@@ -348,6 +348,11 @@ public:
             {
                 pTree->lineThickness = 0;
             }
+            restart = true;
+            break;
+
+        case 'c':   // randomize colors
+            pTree->randomizeTransforms(1);
             restart = true;
             break;
 
