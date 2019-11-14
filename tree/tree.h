@@ -368,21 +368,24 @@ public:
     
 #pragma region PRNG
 
+    //  random double in [0, 1)
     inline double r()
     {
         std::uniform_real_distribution<double> dist{ 0.0, 1.0 };
         return dist(prng);
     }
 
+    //  random double in [0, max)
     inline double r(double maxVal)
     {
         std::uniform_real_distribution<double> dist{ 0.0, maxVal };
         return dist(prng);
     }
 
+    //  random int in [0, max)
     inline int r(int maxVal)
     {
-        std::uniform_int_distribution<int> dist{ 0, maxVal };
+        std::uniform_int_distribution<int> dist{ 0, maxVal-1 };
         return dist(prng);
     }
 
