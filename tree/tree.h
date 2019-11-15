@@ -16,6 +16,7 @@ namespace fs = std::filesystem;
 class qcanvas;
 
 using std::vector;
+using std::string;
 using std::priority_queue;
 
 using cv::Point2f;
@@ -52,7 +53,7 @@ public:
 class qtransform
 {
 public:
-    std::string transformMatrixKey;
+    string transformMatrixKey;
     Matx33 transformMatrix;
     Matx44 colorTransform;
     double gestation;
@@ -66,7 +67,7 @@ public:
         gestation = gestation_;
     }
 
-    qtransform(std::string key_, Matx33 const &transformMatrix_ = Matx33::eye(), Matx44 const &colorTransform_ = Matx44::eye(), double gestation_ = 1.0)
+    qtransform(string key_, Matx33 const &transformMatrix_ = Matx33::eye(), Matx44 const &colorTransform_ = Matx44::eye(), double gestation_ = 1.0)
     {
         transformMatrixKey = key_;
         transformMatrix = transformMatrix_;
@@ -92,6 +93,31 @@ public:
     }
 };
 
+    // serialize colors
+
+    template<typename _Tp>
+    void to_json(json &j, cv::Scalar_<_Tp> const &color)
+    {
+        j = util::toRgbHexString(color);
+    }
+
+    template<typename _Tp>
+    void from_json(json const &j, cv::Scalar_<_Tp> &color)
+    {
+        if (j.is_array())
+        {
+            throw(std::exception("todo"));
+        }
+        if (j.is_string())
+        {
+            color = util::fromRgbHexString(j.get<string>().c_str());
+        }
+        else
+        {
+            throw(std::exception("not convertible to color"));
+        }
+    }
+    
     // serialize vector of points
 
     template<typename _Tp>
@@ -236,16 +262,18 @@ public:
 class qtree
 {
 protected:
-    static std::map<std::string, std::function<qtree*()> > factoryTable;
+    static std::map<string, std::function<qtree*()> > factoryTable;
 
 public:
     // settings
+    string name;
     double maxRadius = 100.0;
     int randomSeed = 0;
 
     // same polygon for all nodes
     std::vector<cv::Point2f> polygon;
 
+    // set of parent-to-child node transforms, defining child characteristics relative to parent's
     std::vector<qtransform> transforms;
     
     double gestationRandomness = 0.0;
@@ -277,6 +305,7 @@ public:
         //  extending classes need to override this value
         j["_class"] = "qtree";
 
+        j["name"] = name;
         j["randomSeed"] = randomSeed;
         j["maxRadius"] = maxRadius;
 
@@ -302,6 +331,7 @@ public:
         // using at() rather than [] so we get a proper exception on a missing key
         // (rather than assert/abort with NDEBUG)
 
+        name = (j.contains("name") ? j.at("name").get<string>() : "");
         randomSeed = j.at("randomSeed");
         maxRadius  = j.at("maxRadius");
         ::from_json( j.at("polygon"), polygon );
@@ -311,13 +341,13 @@ public:
 
         if (j.contains("drawSettings"))
         {
-            lineColor = util::fromRgbHexString(j.at("drawSettings").at("lineColor").get<std::string>().c_str());
+            lineColor = util::fromRgbHexString(j.at("drawSettings").at("lineColor").get<string>().c_str());
             lineThickness = j.at("drawSettings").at("lineThickness");
         }
     }
 
     //  Registers a typed constructor lambda fn
-    static auto registerConstructor(std::string className, std::function<qtree*()> fn)
+    static auto registerConstructor(string className, std::function<qtree*()> fn)
     {
         factoryTable[className] = fn;
         return fn;
@@ -333,10 +363,10 @@ public:
             throw(std::exception("Invalid JSON or missing \"_class\" key."));
         }
 
-        std::string className = j["_class"];
+        string className = j["_class"];
         if (factoryTable.find(className) == factoryTable.end())
         {
-            std::string msg = std::string("Class not registered: '") + className + "'";
+            string msg = string("Class not registered: '") + className + "'";
             throw(std::exception(msg.c_str()));
         }
 
@@ -419,10 +449,10 @@ public:
     //  If 0 < ratio0 < ratio1 < 1, transform will be a size reduction, aligning the entire mapped source edge to a subsegment of the premapped target edge.
     qtransform createEdgeTransform(int parentEdge, int childEdge, bool mirror=false, float ratio0=0.0f, float ratio1=1.0f) const
     {
-        auto parentEdgeString = std::string("E") + std::to_string(parentEdge);
+        auto parentEdgeString = string("E") + std::to_string(parentEdge);
         if (ratio0 != 0.0f || ratio1 != 1.0f)
-            parentEdgeString += (std::string("[") + std::to_string(ratio0) + ":" + std::to_string(ratio1) + "]");
-        auto childEdgeString  = std::string("E") + std::to_string(childEdge);
+            parentEdgeString += (string("[") + std::to_string(ratio0) + ":" + std::to_string(ratio1) + "]");
+        auto childEdgeString  = string("E") + std::to_string(childEdge);
 
         auto p0 = polygon[parentEdge];
         auto p1 = polygon[(parentEdge + 1) % polygon.size()];

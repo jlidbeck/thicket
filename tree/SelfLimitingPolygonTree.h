@@ -23,16 +23,21 @@ using std::endl;
 class SelfLimitingPolygonTree : public qtree
 {
 protected:
-    // settings
+    // --- settings ---
+
     int polygonSides = 5;
     int starAngle = 0;
+    cv::Scalar rootNodeColor = cv::Scalar(0, 0, 1, 1);
 
-    int fieldResolution = 40;   // pixels per unit
+    // controls size of intersection field--in pixels per model unit, independent of display resolution.
+    int fieldResolution = 40;
 
-    // minimum scale (relative to rootNode) considered for new nodes
+    // minimum size (relative to rootNode) for new nodes to be considered viable
     float minimumScale = 0.01f; 
 
     std::vector<Matx44> colorTransformPalette;
+
+    // --- model ---
 
     // intersection field
     cv::Mat1b m_field;
@@ -53,6 +58,10 @@ public:
         j["fieldResolution"] = fieldResolution;
         j["polygonSides"] = polygonSides;
         j["starAngle"] = starAngle;
+        
+        j["rootNode"] = json{
+            { "color", util::toRgbHexString(rootNodeColor) }
+        };
     }
 
     virtual void from_json(json const &j) override
@@ -60,9 +69,13 @@ public:
         qtree::from_json(j);
 
         fieldResolution = j.at("fieldResolution");
-
         polygonSides = (j.contains("polygonSides") ? j.at("polygonSides").get<int>() : 5);
         starAngle    = (j.contains("starAngle"   ) ? j.at("starAngle"   ).get<int>() : 0);
+        
+        if (j.contains("rootNode"))
+        {
+            ::from_json(j.at("rootNode").at("color"), rootNodeColor);
+        }
     }
 
     virtual void setRandomSeed(int randomize) override
@@ -151,7 +164,7 @@ public:
     {
         rootNode.beginTime = 0;
         rootNode.generation = 0;
-        rootNode.color = cv::Scalar(0, 0, 1, 1);
+        rootNode.color = rootNodeColor;
 
         // center root node at origin
         auto centroid = util::polygon::centroid(polygon);
@@ -162,11 +175,9 @@ public:
     {
         qtree::beget(parent, t, child);
 
-        // hsv color mutator
+        // apply affine transform in HLS space
         auto hls = util::cvtColor(parent.color, cv::ColorConversionCodes::COLOR_BGR2HLS);
         hls = t.colorTransform*hls;
-        //hsv(0) += t.colorTransform(0, 3);
-        //hsv(2) *= t.colorTransform(2, 2);
         child.color = util::cvtColor(hls, cv::ColorConversionCodes::COLOR_HLS2BGR);
     }
 
@@ -316,6 +327,7 @@ public:
         fieldResolution = 200;
         maxRadius = 10;
         gestationRandomness = 10;
+        rootNodeColor = cv::Scalar(0.2, 0.5, 0, 1);
     }
 
     virtual void create() override
@@ -373,11 +385,6 @@ public:
 
     }
 
-    virtual void createRootNode(qnode & rootNode) override
-    {
-        rootNode.color = cv::Scalar(0.2, 0.5, 0, 1);
-    }
-
 };
 
 REGISTER_QTREE_TYPE(TrapezoidTree);
@@ -386,6 +393,8 @@ REGISTER_QTREE_TYPE(TrapezoidTree);
 
 #pragma region ThornTree
 
+//  Tesselations based on the "Versatile" thorn-shaped 9-sided polygon
+//  described by Penrose, Grunwald, ...
 class ThornTree : public SelfLimitingPolygonTree
 {
 public:
@@ -396,6 +405,8 @@ public:
         fieldResolution = 20;
         maxRadius = 50;
         gestationRandomness = 0;
+
+        rootNodeColor = cv::Scalar(1.0, 1.0, 0.0, 1);
 
         // override polygon
         polygon.clear();
@@ -420,17 +431,10 @@ public:
             for (int j = 0; j < polygon.size(); ++j)
             {
                 if (r(20) == 0)
-                    transforms.push_back(
-                        qtransform(
-                            util::transform3x3::getEdgeMap(polygon[i], polygon[(i + 1) % polygon.size()], polygon[(j + 1) % polygon.size()], polygon[j])
-                        )
-                    );
+                    transforms.push_back(createEdgeTransform(i, j));
+
                 if (r(20) == 0)
-                    transforms.push_back(
-                        qtransform(
-                            util::transform3x3::getMirroredEdgeMap(polygon[i], polygon[(i + 1) % polygon.size()], polygon[j], polygon[(j + 1) % polygon.size()])
-                        )
-                    );
+                    transforms.push_back(createEdgeTransform(i, j, true));
             }
         }
 
@@ -453,13 +457,6 @@ public:
     {
         SelfLimitingPolygonTree::create();
 
-    }
-
-    virtual void createRootNode(qnode & rootNode) override
-    {
-        SelfLimitingPolygonTree::createRootNode(rootNode);
-
-        rootNode.color = cv::Scalar(1.0, 1.0, 0.0, 1);
     }
 
     // overriding to save intersection field mask as well

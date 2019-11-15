@@ -9,7 +9,7 @@
 
 
 //  Static instance of constructor fn table used for dynamic instantiation of qtree-derived classes
-std::map<std::string, std::function<qtree*()> > qtree::factoryTable;
+std::map<string, std::function<qtree*()> > qtree::factoryTable;
 
 
 //  process one node
@@ -44,8 +44,7 @@ void qtree::beget(qnode const & parent, qtransform const & t, qnode & child)
 
     child.globalTransform = parent.globalTransform * t.transformMatrix;
 
-    auto m = t.colorTransform * parent.color;
-    child.color = m;
+    child.color = t.colorTransform * parent.color;
 }
 
 //  Node draw function for tree of nodes with all the same polygon
