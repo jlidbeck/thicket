@@ -38,6 +38,9 @@ bool qtree::process()
 //  Generate a child node from parent
 void qtree::beget(qnode const & parent, qtransform const & t, qnode & child)
 {
+    child.id = nextNodeId++;
+    child.parentId = parent.id;
+
     child.generation = parent.generation + 1;
 
     child.beginTime = parent.beginTime + t.gestation + (gestationRandomness>0.0 ? r(gestationRandomness) : 0.0);
@@ -50,9 +53,6 @@ void qtree::beget(qnode const & parent, qtransform const & t, qnode & child)
 //  Node draw function for tree of nodes with all the same polygon
 void qtree::drawNode(qcanvas &canvas, qnode const &node)
 {
-    if (!isViable(node))
-        return;
-
     Matx33 m = canvas.globalTransform * node.globalTransform;
 
     vector<cv::Point2f> v;

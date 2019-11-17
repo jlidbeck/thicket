@@ -8,6 +8,8 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <array>
+#include <list>
+#include <unordered_set>
 
 
 using std::cout;
@@ -158,10 +160,14 @@ public:
 
         util::clear(nodeQueue);
         nodeQueue.push(rootNode);
+
+        m_nodeList.clear();
     }
 
     virtual void createRootNode(qnode & rootNode)
     {
+        rootNode.id = 0;
+        rootNode.parentId = 0;
         rootNode.beginTime = 0;
         rootNode.generation = 0;
         rootNode.color = rootNodeColor;
@@ -203,39 +209,139 @@ public:
     //  quick detection means that this node is not viable.
     bool drawField(qnode const &node) const
     {
-        Matx33 m = m_fieldTransform * node.globalTransform;
-
         vector<cv::Point2f> v;
 
-        // first, transform model polygon to model global coordinates to test against maxRadius
+        // first, transform node polygon to model coordinates
         cv::transform(polygon, v, node.globalTransform.get_minor<2, 3>(0, 0));
+
+        // test each vertex against maxRadius
         for (auto const& p : v)
             if (p.dot(p) > maxRadius*maxRadius)
                 return false;
 
         // transform model polygon to field coords
+        Matx33 m = m_fieldTransform * node.globalTransform;
         cv::transform(polygon, v, m.get_minor<2, 3>(0, 0));
+        // convert to int-coordinate struct for cv::polylines
         vector<vector<cv::Point> > pts(1);
         for (auto const& p : v)
             pts[0].push_back(p);
 
+        // (double) check that coords are within field
         m_fieldLayerBoundingRect = cv::boundingRect(pts[0]);
         if ((cv::Rect(0, 0, m_field.cols, m_field.rows) & m_fieldLayerBoundingRect) != m_fieldLayerBoundingRect)
             return false;
 
+        // clear a region of our scratch layer and draw node on it
         m_fieldLayer(m_fieldLayerBoundingRect) = 0;
         cv::fillPoly(m_fieldLayer, pts, cv::Scalar(255), cv::LineTypes::LINE_8);
-        // reduce by drawing outline in black, since OpenCV fillPoly draws extra pixels along edge
+        // reduce by drawing outline in black:
+        // this is a bit of a hack to get around the problem of OpenCV always drawing a pixel-wide boundary even when only a fill is specified
         cv::polylines(m_fieldLayer, pts, true, cv::Scalar(0), 1, cv::LineTypes::LINE_8);
+        // double-draw and soften the line--purely for aesthetics, since the field layer is exported as well
         cv::polylines(m_fieldLayer, pts, true, cv::Scalar(0), 1, cv::LineTypes::LINE_AA);
 
         return true;
     }
 
-    // update field image: composite new node
+    void undrawNode(qnode &node)
+    {
+        drawField(node);
+        cv::bitwise_not(m_fieldLayer(m_fieldLayerBoundingRect), m_fieldLayer(m_fieldLayerBoundingRect));
+        cv::bitwise_and(m_field(m_fieldLayerBoundingRect), m_fieldLayer(m_fieldLayerBoundingRect), m_field(m_fieldLayerBoundingRect));
+    }
+
+    std::list<qnode> m_nodeList;
+
     virtual void addNode(qnode &currentNode) override
     {
+        m_nodeList.push_back(currentNode);
+
+        // update field image: composite new node
         cv::bitwise_or(m_field(m_fieldLayerBoundingRect), m_fieldLayer(m_fieldLayerBoundingRect), m_field(m_fieldLayerBoundingRect));
+    }
+
+    auto findNode(int id)
+    {
+        for (auto it = m_nodeList.begin(); it!=m_nodeList.end(); ++it)
+        {
+            if (it->id == id)
+            {
+                return it;
+            }
+        }
+        return m_nodeList.end();
+    }
+
+    virtual int removeNode(int id) override
+    {
+        auto it = m_nodeList.begin();
+        if(id>=0)
+            it = findNode(id);
+
+        if (it == m_nodeList.end())
+        {
+            // not found
+            return 0;
+        }
+        undrawNode(*it);
+        it = m_nodeList.erase(it);
+        cout << " -- removing " << (it->id) << " from " << (it->parentId) << " remaining: " << m_nodeList.size() << endl;
+        return 1;
+        /*
+        m_markedForDeletion.clear();
+        m_markedForDeletion.insert(id);
+
+        markDescendantsForDeletion();
+
+        int removed = 0;
+        for (auto it = m_nodeList.begin(); it != m_nodeList.end(); )
+        {
+            if (m_markedForDeletion.find(it->id) != m_markedForDeletion.end())
+            {
+                cout << " -- removing " << (it->id) << " from " << (it->parentId) << endl;
+                undrawNode(*it);
+
+                it = m_nodeList.erase(it);
+                ++removed;
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
+        m_markedForDeletion.clear();
+
+        //sprout();
+
+        return removed;//*/
+    }
+
+    virtual void regrowAll() override
+    {
+        for (auto & currentNode : m_nodeList)
+        {
+            // !TODO! this is duplicated code
+            // create a child node for each available transform.
+            // all child nodes are added to the queue, even if not viable.
+            for (auto const &t : transforms)
+            {
+                qnode child;
+                beget(currentNode, t, child);
+                nodeQueue.push(child);
+            }
+        }
+    }
+
+    //  Node draw function for tree of nodes with all the same polygon
+    virtual void redrawAll(qcanvas &canvas) override
+    {
+        canvas.image = 0;
+        for (auto & node : m_nodeList)
+        {
+            drawNode(canvas, node);
+        }
     }
 
 };

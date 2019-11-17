@@ -369,13 +369,36 @@ public:
             stepping = false;
             maxNodesProcessedPerFrame = 64;
             restart = true;
-            return;
+            break;
+        }
+
+        case 'x':
+        {
+            int count = 0;
+            for (int idx = 0; idx < 100000 && count<1; ++idx)
+            {
+                count += pTree->removeNode(-1);
+            }
+            if (count)
+            {
+                cout << "** remove(" << 42 << "): " << count << " nodes removed\n";
+                pTree->redrawAll(canvas);
+                cv::imshow("Memtest", canvas.image); // Show our image inside it.
+                break;
+            }
+            break;
+        }
+
+        case 'X':
+        {
+            pTree->regrowAll();
+            break;
         }
 
         case 27:    // ESC
         case 'q':
             quit = true;
-            return;
+            break;
 
         default:
             cout << "? " << key << endl;

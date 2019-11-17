@@ -213,8 +213,10 @@ public:
 class qnode
 {
 public:
-    double      beginTime;
-    int         generation;
+    int         id              = 0;
+    int         parentId        = 0;
+    double      beginTime       = 0.0;
+    int         generation      = 0;
     Matx33      globalTransform;
     cv::Scalar  color = cv::Scalar(1, 0, 0, 1);
 
@@ -285,6 +287,8 @@ public:
     // model
     std::mt19937 prng; //Standard mersenne_twister_engine with default seed
     std::priority_queue<qnode, std::deque<qnode>, qnode::EarliestFirst> nodeQueue;
+
+    int nextNodeId = 1;
 
 public:
     qtree() {}
@@ -394,8 +398,13 @@ public:
     // invoked when a viable node is pulled from the queue. override to update drawing, data structures, etc.
     virtual void addNode(qnode & node) { }
 
+    virtual int removeNode(int id) { return 0; }
+
     // generate a child node from a parent
     virtual void beget(qnode const & parent, qtransform const & t, qnode & child);
+
+    // trigger all existing nodes to attempt to re-bud child nodes
+    virtual void regrowAll() {}
 
     virtual cv::Rect_<float> getBoundingRect() const
     {
@@ -403,6 +412,7 @@ public:
         return cv::Rect_<float>(-r, -r, 2 * r, 2 * r);
     }
 
+    virtual void redrawAll(qcanvas &canvas) {}
     virtual void drawNode(qcanvas &canvas, qnode const &node);
 
     virtual void saveImage(fs::path imagePath) { };
