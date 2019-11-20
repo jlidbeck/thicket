@@ -18,6 +18,9 @@ using std::cout;
 using std::endl;
 
 
+#define DDIM 1200
+
+
 class TreeDemo
 {
 public:
@@ -74,7 +77,7 @@ public:
                 pTree->to_json(settingsJson);
                 cout << settingsJson << endl;
 
-                canvas.image = cv::Mat3b(1200, 1200);
+                canvas.image = cv::Mat3b(DDIM, DDIM);
                 canvas.image = 0;
                 canvas.setScaleToFit(pTree->getBoundingRect(), imagePadding);
 
@@ -295,13 +298,13 @@ public:
             break;
         }
 
-        case 2162688:   // PageUp
+        case 'O':
+        case 0x210000:      // PageUp
             findPreviousFile();
             openFile(mostRecentFileIndex);
             break;
 
-        case 2228224:   // PageDown
-        case 'O':
+        case 0x220000:      // PageDown
         {
             findNextFile();
             openFile(mostRecentFileIndex);
@@ -360,6 +363,15 @@ public:
         {
             stepping = true;
             maxNodesProcessedPerFrame = 1;
+            if (pTree->nodeQueue.empty())
+                restart = true;
+            break;
+        }
+
+        case ',':
+        {
+            stepping = false;
+            maxNodesProcessedPerFrame = 64;
             break;
         }
 
