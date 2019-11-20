@@ -53,21 +53,11 @@ void qtree::beget(qnode const & parent, qtransform const & t, qnode & child)
 //  Node draw function for tree of nodes with all the same polygon
 void qtree::drawNode(qcanvas &canvas, qnode const &node)
 {
-    Matx33 m = canvas.globalTransform * node.globalTransform;
-
-    vector<cv::Point2f> v;
-    cv::transform(polygon, v, m.get_minor<2, 3>(0, 0));
-    vector<vector<cv::Point> > pts(1);
-    for (auto const& p : v)
-        pts[0].push_back(p * 16);
-
-    cv::Scalar color = 
+    cv::Scalar color =
         //(node.det() < 0) ? 255.0 * (cv::Scalar(1.0, 1.0, 1.0, 1.0) - node.color) : 
         255.0 * node.color;
-    cv::fillPoly(canvas.image, pts, color, cv::LineTypes::LINE_AA, 4);
 
-    if(lineThickness>0)
-        cv::polylines(canvas.image, pts, true, lineColor, lineThickness, cv::LineTypes::LINE_AA, 4);
+    canvas.fillPoly(polygon, node.globalTransform, 255.0 * node.color, lineThickness, lineColor);
 }
 
 

@@ -47,6 +47,27 @@ public:
         globalTransform = util::transform3x3::centerAndFit(rect, cv::Rect_<float>(0.0f, 0.0f, (float)image.cols, (float)image.rows), buffer, true);
     }
 
+    void fillPoly(std::vector<cv::Point2f> const &polygon, Matx33 const &transform, cv::Scalar color, int lineThickness, cv::Scalar lineColor)
+    {
+        Matx33 m = globalTransform * transform;
+
+        vector<cv::Point2f> v;
+        cv::transform(polygon, v, m.get_minor<2, 3>(0, 0));
+        vector<vector<cv::Point> > pts(1);
+        for (auto const& p : v)
+            pts[0].push_back(p * 16);
+
+        if (lineThickness > 0)
+        {
+            cv::fillPoly(image, pts, color, cv::LineTypes::LINE_8, 4);
+            cv::polylines(image, pts, true, lineColor, lineThickness, cv::LineTypes::LINE_AA, 4);
+        }
+        else
+        {
+            cv::fillPoly(image, pts, color, cv::LineTypes::LINE_AA, 4);
+        }
+    }
+
 };
 
 
