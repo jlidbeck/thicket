@@ -29,7 +29,7 @@ protected:
 
     int polygonSides = 5;
     int starAngle = 0;
-    cv::Scalar rootNodeColor = cv::Scalar(0, 0, 1, 1);
+    cv::Scalar rootNodeColor = cv::Scalar(0.0, 0.0, 1.0, 1.0);
 
     // controls size of intersection field--in pixels per model unit, independent of display resolution.
     int fieldResolution = 40;
@@ -37,7 +37,7 @@ protected:
     // minimum size (relative to rootNode) for new nodes to be considered viable
     float minimumScale = 0.01f; 
 
-    std::vector<Matx44> colorTransformPalette;
+    std::vector<ColorTransform> colorTransformPalette;
 
     // --- model ---
 
@@ -61,9 +61,7 @@ public:
         j["polygonSides"] = polygonSides;
         j["starAngle"] = starAngle;
         
-        j["rootNode"] = json{
-            { "color", util::toRgbHexString(rootNodeColor) }
-        };
+        ::to_json(j["rootNode"]["color"], rootNodeColor);
     }
 
     virtual void from_json(json const &j) override
@@ -120,13 +118,31 @@ public:
             colorTransformPalette.clear();
             // HLS space color transforms
             //colorTransformPalette.push_back(util::scaleAndTranslate(1.0, 0.99, 1.0, 180.0*r()*r()-90.0, 0.0, 0.0));    // darken and hue-shift
-            //colorTransformPalette.push_back(util::colorSink( 20.0, 0.5, 1.0, 0.25));   // toward orange
-            //colorTransformPalette.push_back(util::colorSink(200.0, 0.5, 1.0, 0.25));   // toward blue
+            //colorTransformPalette.push_back(ColorTransform::hlsSink( 20.0, 0.5, 1.0, 0.25));   // toward orange
+            //colorTransformPalette.push_back(ColorTransform::hlsSink(200.0, 0.5, 1.0, 0.25));   // toward blue
             double lightness = 0.5;
             double sat = 1.0;
-            colorTransformPalette.push_back(util::colorSink(r(720.0) - 360.0, 0.5 + r(0.5), sat, r(0.5)));
-            colorTransformPalette.push_back(util::colorSink(r(720.0) - 360.0, 0.5 + r(0.5), sat, r(0.5)));
-            colorTransformPalette.push_back(util::colorSink(r(720.0) - 360.0, 0.5 + r(0.5), sat, r(0.5)));
+            colorTransformPalette.push_back(ColorTransform::hlsSink(r(360.0), lightness, sat, r(0.5)));
+            colorTransformPalette.push_back(ColorTransform::hlsSink(r(360.0), lightness, sat, r(0.5)));
+            colorTransformPalette.push_back(ColorTransform::hlsSink(r(360.0), lightness, sat, r(0.5)));
+            colorTransformPalette.push_back(ColorTransform::hlsSink(r(360.0), lightness, sat, r(0.5)));
+            //colorTransformPalette.push_back(ColorTransform::hlsSink(r(360.0), 0.5 + r(0.5), sat, r(0.5)));
+            //colorTransformPalette.push_back(ColorTransform::hlsTransform(r(2.0) - 1.0, 1.0, 1.0));
+            //colorTransformPalette.push_back(ColorTransform::hlsTransform(r(2.0) - 1.0, 1.0, 1.0));
+            //colorTransformPalette.push_back(ColorTransform::hlsTransform(r(2.0) - 1.0, 1.0, 1.0));
+            colorTransformPalette.push_back(ColorTransform::hueShift(r(360.0)));            // wild hueshift
+            colorTransformPalette.push_back(ColorTransform::hueShift(r(360.0)));            // wild hueshift
+            //colorTransformPalette.push_back(ColorTransform::hlsTransform(r(360.0), 0.9, 1.0));            // darken
+            if (r(2))
+            {
+                colorTransformPalette.push_back(ColorTransform::hlsSink(r(360.0), 0.0, 0.0, r(0.5)));       // desaturating darken--grayer, muted shadows
+                colorTransformPalette.push_back(ColorTransform::hlsSink(r(360.0), 1.0, 0.0, r(0.5)));       // desaturating whiten
+            }
+            else
+            {
+                colorTransformPalette.push_back(ColorTransform::hlsSink(r(360.0), 0.0, 1.0, r(0.5)));       // sat darken
+                colorTransformPalette.push_back(ColorTransform::hlsSink(r(360.0), 1.0, 1.0, r(0.5)));       // sat whiten
+            }
         }
 
         for (auto & t : transforms)
@@ -182,9 +198,7 @@ public:
         qtree::beget(parent, t, child);
 
         // apply affine transform in HLS space
-        auto hls = util::cvtColor(parent.color, cv::ColorConversionCodes::COLOR_BGR2HLS);
-        hls = t.colorTransform*hls;
-        child.color = util::cvtColor(hls, cv::ColorConversionCodes::COLOR_HLS2BGR);
+        child.color = t.colorTransform.apply(parent.color);
     }
 
 
@@ -273,6 +287,24 @@ public:
         return m_nodeList.end();
     }
 
+    virtual void getNodesIntersecting(cv::Rect2f const &rect, std::vector<qnode> &nodes) const override
+    {
+        for (auto & node : m_nodeList)
+        {
+            std::vector<cv::Point2f> pts;
+            getPolyPoints(node, pts);
+            // this is not a proper intersection
+            for (auto const & pt : pts)
+            {
+                if (rect.contains(pt))
+                {
+                    nodes.push_back(node);
+                    break;
+                }
+            }
+        }
+    }
+
     virtual int removeNode(int id) override
     {
         auto it = m_nodeList.begin();
@@ -284,9 +316,9 @@ public:
             // not found
             return 0;
         }
+        cout << " -- removing " << (it->id) << " from " << (it->parentId) << " remaining: " << m_nodeList.size() << endl;
         undrawNode(*it);
         it = m_nodeList.erase(it);
-        cout << " -- removing " << (it->id) << " from " << (it->parentId) << " remaining: " << m_nodeList.size() << endl;
         return 1;
         /*
         m_markedForDeletion.clear();
@@ -459,24 +491,24 @@ public:
         //    transforms.push_back(
         //        qtransform(
         //            util::transform3x3::getMirroredEdgeMap(polygon[0], polygon[1], polygon[i], polygon[(i+1)%polygon.size()]),
-        //            util::colorSink(randomColor(), 0.5f))
+        //            ColorTransform::hlsSink(randomColor(), 0.5f))
         //    );
         //}
 
         transforms.push_back(
             qtransform(
                 util::transform3x3::getMirroredEdgeMap(polygon[0], polygon[1], polygon[1], polygon[2]),
-                util::colorSink(randomColor(), 0.5))
+                ColorTransform::rgbSink(randomColor(), 0.5))
         );
         transforms.push_back(
             qtransform(
                 util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[3], polygon[2]),
-                util::colorSink(randomColor(), 0.5))
+                ColorTransform::rgbSink(randomColor(), 0.5))
         );
         transforms.push_back(
             qtransform(
                 util::transform3x3::getMirroredEdgeMap(polygon[0], polygon[1], polygon[3], polygon[0]),
-                util::colorSink(randomColor(), 0.5))
+                ColorTransform::rgbSink(randomColor(), 0.5))
         );
 
         //transforms[0].gestation = 1111.1;
@@ -484,10 +516,10 @@ public:
         transforms[1].gestation = r(10.0);
         transforms[2].gestation = r(10.0);
 
-        //transforms[0].colorTransform = util::colorSink(1.0f,1.0f,1.0f, 0.5f);
-        //transforms[0].colorTransform = util::colorSink(0.0f,0.5f,0.0f, 0.8f);
-        //transforms[1].colorTransform = util::colorSink(0.5f,1.0f,1.0f, 0.3f);
-        //transforms[2].colorTransform = util::colorSink(0.9f,0.5f,0.0f, 0.8f);
+        //transforms[0].colorTransform = ColorTransform::hlsSink(1.0f,1.0f,1.0f, 0.5f);
+        //transforms[0].colorTransform = ColorTransform::hlsSink(0.0f,0.5f,0.0f, 0.8f);
+        //transforms[1].colorTransform = ColorTransform::hlsSink(0.5f,1.0f,1.0f, 0.3f);
+        //transforms[2].colorTransform = ColorTransform::hlsSink(0.9f,0.5f,0.0f, 0.8f);
 
     }
 
@@ -529,8 +561,8 @@ public:
 
         // override edge transforms
         transforms.clear();
-        //auto ct1 = util::colorSink(util::hsv2bgr( 10.0, 1.0, 0.75), 0.3);
-        //auto ct2 = util::colorSink(util::hsv2bgr(200.0, 1.0, 0.75), 0.3);
+        //auto ct1 = ColorTransform::hlsSink(util::hsv2bgr( 10.0, 1.0, 0.75), 0.3);
+        //auto ct2 = ColorTransform::hlsSink(util::hsv2bgr(200.0, 1.0, 0.75), 0.3);
 
         for (int i = 0; i < polygon.size(); ++i)
         {

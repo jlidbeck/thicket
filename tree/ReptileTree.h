@@ -99,9 +99,9 @@ public:
 
             transforms = { {
                     //          00  01   tx     10    11  ty
-                    qtransform(0.0f, r3 / 3, 0.0f,  r3 / 3,0.0f,0.0f,  util::colorSink(Matx41(9,0,3,1)*0.111f, 0.1f)),
-                    qtransform(-.5f,-r3 / 6, r3 / 2,  r3 / 6,-.5f, .5f,  util::colorSink(Matx41(3,0,1,1)*0.111f, 0.9f)),
-                    qtransform(.5f,-r3 / 6, r3 / 2, -r3 / 6,-.5f, .5f,  util::colorSink(Matx41(3,0,9,1)*0.111f, 0.1f))
+                    qtransform(0.0f, r3 / 3, 0.0f,  r3 / 3,0.0f,0.0f,  ColorTransform::rgbSink(Matx41(9,0,3,1)*0.111f, 0.1f)),
+                    qtransform(-.5f,-r3 / 6, r3 / 2,  r3 / 6,-.5f, .5f,  ColorTransform::rgbSink(Matx41(3,0,1,1)*0.111f, 0.9f)),
+                    qtransform(.5f,-r3 / 6, r3 / 2, -r3 / 6,-.5f, .5f,  ColorTransform::rgbSink(Matx41(3,0,9,1)*0.111f, 0.1f))
                 } };
 
         }
@@ -114,11 +114,11 @@ public:
 
             transforms = { {
                     //          00  01  tx   10  11  ty
-                    qtransform(-.2,-.4, .4, -.4, .2, .8,  util::colorSink(Matx41(0,0,9,1)*0.111f, 0.1f)),
-                    qtransform(.4,-.2, .2, -.2,-.4, .4,  util::colorSink(Matx41(0,4,9,1)*0.111f, 0.1f)),
-                    qtransform(.4, .2, .2, -.2, .4, .4,  util::colorSink(Matx41(9,9,9,1)*0.111f, 0.1f)),
-                    qtransform(-.4,-.2,1.2,  .2,-.4, .4,  util::colorSink(Matx41(0,9,4,1)*0.111f, 0.1f)),
-                    qtransform(.4,-.2,1.2, -.2,-.4, .4,  util::colorSink(Matx41(0,0,0,1)*0.111f, 0.1f))
+                    qtransform(-.2,-.4, .4, -.4, .2, .8,  ColorTransform::rgbSink(Matx41(0,0,9,1)*0.111f, 0.1f)),
+                    qtransform(.4,-.2, .2, -.2,-.4, .4,  ColorTransform::rgbSink(Matx41(0,4,9,1)*0.111f, 0.1f)),
+                    qtransform(.4, .2, .2, -.2, .4, .4,  ColorTransform::rgbSink(Matx41(9,9,9,1)*0.111f, 0.1f)),
+                    qtransform(-.4,-.2,1.2,  .2,-.4, .4,  ColorTransform::rgbSink(Matx41(0,9,4,1)*0.111f, 0.1f)),
+                    qtransform(.4,-.2,1.2, -.2,-.4, .4,  ColorTransform::rgbSink(Matx41(0,0,0,1)*0.111f, 0.1f))
                 } };
 
             break;
@@ -137,11 +137,11 @@ public:
             }
 
             transforms = { {
-                    qtransform{ util::transform3x3::getRotate(1 * astep) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(0,2,9,1)*0.111f, 0.7f) },
-                    qtransform{ util::transform3x3::getRotate(3 * astep) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(0,4,9,1)*0.111f, 0.7f) },
-                    qtransform{ util::transform3x3::getRotate(5 * astep) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(0,9,9,1)*0.111f, 0.7f) },
-                    qtransform{ util::transform3x3::getRotate(7 * astep) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(6,0,9,1)*0.111f, 0.7f) },
-                    qtransform{ util::transform3x3::getRotate(9 * astep) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(9,4,0,1)*0.111f, 0.7f) }
+                    qtransform{ util::transform3x3::getRotate(1 * astep) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), ColorTransform::rgbSink(Matx41(0,2,9,1)*0.111f, 0.7f) },
+                    qtransform{ util::transform3x3::getRotate(3 * astep) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), ColorTransform::rgbSink(Matx41(0,4,9,1)*0.111f, 0.7f) },
+                    qtransform{ util::transform3x3::getRotate(5 * astep) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), ColorTransform::rgbSink(Matx41(0,9,9,1)*0.111f, 0.7f) },
+                    qtransform{ util::transform3x3::getRotate(7 * astep) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), ColorTransform::rgbSink(Matx41(6,0,9,1)*0.111f, 0.7f) },
+                    qtransform{ util::transform3x3::getRotate(9 * astep) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), ColorTransform::rgbSink(Matx41(9,4,0,1)*0.111f, 0.7f) }
                 } };
 
             m_rootNode.color = cv::Scalar(0.5f, 0.75f, 1, 1);
@@ -163,12 +163,12 @@ public:
 
             float angle = 6.283f / 6.0f;
             transforms = { {
-                    qtransform(util::transform3x3::getRotate(0 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(0,2,9,1)*0.111f, 0.7f)),
-                    qtransform(util::transform3x3::getRotate(1 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(0,4,9,1)*0.111f, 0.7f)),
-                    qtransform(util::transform3x3::getRotate(2 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(0,9,9,1)*0.111f, 0.7f)),
-                    qtransform(util::transform3x3::getRotate(3 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(6,0,9,1)*0.111f, 0.7f)),
-                    qtransform(util::transform3x3::getRotate(4 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(9,4,0,1)*0.111f, 0.7f)),
-                    qtransform(util::transform3x3::getRotate(5 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), util::colorSink(Matx41(2,0,9,1)*0.111f, 0.7f))
+                    qtransform(util::transform3x3::getRotate(0 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), ColorTransform::rgbSink(Matx41(0,2,9,1)*0.111f, 0.7f)),
+                    qtransform(util::transform3x3::getRotate(1 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), ColorTransform::rgbSink(Matx41(0,4,9,1)*0.111f, 0.7f)),
+                    qtransform(util::transform3x3::getRotate(2 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), ColorTransform::rgbSink(Matx41(0,9,9,1)*0.111f, 0.7f)),
+                    qtransform(util::transform3x3::getRotate(3 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), ColorTransform::rgbSink(Matx41(6,0,9,1)*0.111f, 0.7f)),
+                    qtransform(util::transform3x3::getRotate(4 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), ColorTransform::rgbSink(Matx41(9,4,0,1)*0.111f, 0.7f)),
+                    qtransform(util::transform3x3::getRotate(5 * angle) * util::transform3x3::getScaleTranslate(0.5f, 0.0f, 1.0f), ColorTransform::rgbSink(Matx41(2,0,9,1)*0.111f, 0.7f))
                 } };
 
             m_rootNode.color = cv::Scalar(1, 1, 1, 1);
@@ -183,9 +183,9 @@ public:
                 } };
 
             transforms = { {
-                    qtransform(util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[2], polygon[1]), util::colorSink(Matx41(0,0,9,1)*0.111f, 0.2f)),
-                    qtransform(util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[3], polygon[2]), util::colorSink(Matx41(0,9,0,1)*0.111f, 0.2f)),
-                    qtransform(util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[0], polygon[3]), util::colorSink(Matx41(9,0,0,1)*0.111f, 0.2f))
+                    qtransform(util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[2], polygon[1]), ColorTransform::rgbSink(Matx41(0,0,9,1)*0.111f, 0.2f)),
+                    qtransform(util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[3], polygon[2]), ColorTransform::rgbSink(Matx41(0,9,0,1)*0.111f, 0.2f)),
+                    qtransform(util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[0], polygon[3]), ColorTransform::rgbSink(Matx41(9,0,0,1)*0.111f, 0.2f))
                 } };
 
             m_rootNode.color = cv::Scalar(1, 1, 1, 1);
@@ -201,7 +201,7 @@ public:
         {
             for (auto &t : transforms)
             {
-                t.colorTransform = util::colorSink(randomColor(), r());
+                t.colorTransform = ColorTransform::rgbSink(randomColor(), r());
                 t.gestation = 1 + r(500.0);
             }
 
@@ -250,9 +250,9 @@ public:
         }
 
         // true reptiles don't grow outside the initial bounds
-        vector<cv::Point2f> v;
-        m_rootNode.getPolyPoints(polygon, v);
-        return util::getBoundingRect(v);
+        vector<cv::Point2f> pts;
+        getPolyPoints(m_rootNode, pts);
+        return util::getBoundingRect(pts);
     }
 };
 

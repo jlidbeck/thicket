@@ -61,10 +61,10 @@ public:
             } };
 
         transforms = { {
-                qtransform(util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[2], polygon[1]), util::colorSink(Matx41(9,4,0,1)*0.111f, 0.8f)),
-                qtransform(util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[3], polygon[2]), util::colorSink(Matx41(9,9,9,1)*0.111f, 0.5f)),
-                qtransform(util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[0], polygon[3]), util::colorSink(Matx41(0,4,9,1)*0.111f, 0.8f)/*),
-                qtransform(util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[1], polygon[0]), util::colorSink(Matx41(9,9,9,1)*0.111f, 0.2f)*/)   // [3] never relevant
+                qtransform(util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[2], polygon[1]), ColorTransform::rgbSink(Matx41(9,4,0,1)*0.111f, 0.8f)),
+                qtransform(util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[3], polygon[2]), ColorTransform::rgbSink(Matx41(9,9,9,1)*0.111f, 0.5f)),
+                qtransform(util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[0], polygon[3]), ColorTransform::rgbSink(Matx41(0,4,9,1)*0.111f, 0.8f)/*),
+                qtransform(util::transform3x3::getEdgeMap(polygon[0], polygon[1], polygon[1], polygon[0]), ColorTransform::rgbSink(Matx41(9,9,9,1)*0.111f, 0.2f)*/)   // [3] never relevant
             } };
 
         qnode rootNode;
@@ -108,7 +108,7 @@ private:
     cv::Point getNodeKey(qnode const &node) const
     {
         vector<cv::Point2f> pts;
-        node.getPolyPoints(polygon, pts);
+        getPolyPoints(node, pts);
         cv::Point center = ((pts[0] + pts[2]) / 2.0f );
         return center;
     }

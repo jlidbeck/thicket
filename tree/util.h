@@ -1,9 +1,34 @@
 #pragma once
 
+#include <nlohmann/json.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/affine.hpp>
 #include <vector>
+#include <string>
+
+
+// Operators for OpenCV types
+
+//  rect * float => rect:
+//  scales the points (and dimensions) of a rectangle
+template<typename _Tp>
+cv::Rect_<_Tp> operator*(cv::Rect_<_Tp> const& rc, _Tp scale) 
+{
+    return cv::Rect_<_Tp>(scale * rc.x, scale * rc.y, scale * rc.width, scale * rc.height);
+}
+
+//  rect *= float => rect:
+//  scales the points (and dimensions) of a rectangle
+template<typename _Tp>
+cv::Rect_<_Tp> operator*=(cv::Rect_<_Tp> & rc, _Tp scale) 
+{
+    rc.x *= scale; 
+    rc.y *= scale; 
+    rc.width *= scale; 
+    rc.height *= scale;
+    return rc;
+}
 
 
 namespace util
@@ -91,9 +116,9 @@ namespace util
         {
             cv::Point_<_Tp> srcv = src1 - src0;
             cv::Point_<_Tp> destv = dest1 - dest0;
-            auto srcnorm = srcv.dot(srcv);
-            double sc = srcv.ddot(destv) / srcnorm;
-            double ss = srcv.cross(destv) / srcnorm;
+            auto srcnorm = srcv.ddot(srcv);
+            _Tp sc = srcv.ddot(destv) / srcnorm;
+            _Tp ss = srcv.cross(destv) / srcnorm;
             auto scrot = cv::Matx<_Tp, 3, 3>(
                 sc, -ss, 0,
                 ss,  sc, 0,
@@ -144,6 +169,13 @@ namespace util
 		}
 	}
 
+    template<typename _Tp, int m, int n>
+    bool approximatelyEqual(cv::Matx<_Tp, m, n> const &m1, cv::Matx<_Tp, m, n> const &m2, _Tp epsilon=0.0001)
+    {
+        double min, max;
+        cv::minMaxLoc(cv::abs(cv::Mat(m1 - m2)), &min, &max);
+        return (max < epsilon);
+    }
 
     template<typename _Tp>
     cv::Rect_<_Tp> getBoundingRect(std::vector<cv::Point_<_Tp> > const &pts)
@@ -173,6 +205,39 @@ namespace util
         rect.width = r - rect.x;
         rect.height = b - rect.y;
         return rect;
+    }
+
+
+
+    //  Assumes provided Scalar is in BGR order and scaled 0..255; returns string as "RRGGBB"
+    inline std::string toRgbHexString(cv::Scalar bgr)
+    {
+        // temp patch
+        if ((bgr(0) > 0 || bgr(1) > 0 || bgr(2) > 0) && (bgr(0) <= 1) && (bgr(1) <= 1) && (bgr(2) <= 1))
+        {
+            bgr *= 255.0;
+        }
+
+        char str[8];
+        sprintf_s(str, "%02x%02x%02x",
+            (uchar)(0.5 + bgr(2)),
+            (uchar)(0.5 + bgr(1)),
+            (uchar)(0.5 + bgr(0))
+        );
+        return str;
+    }
+
+    //  Assumes provided string is "RRGGBB"; returns Scalar in BGR order
+    inline cv::Scalar fromRgbHexString(char const * rgbString)
+    {
+        uint32_t rgb;
+        sscanf_s(rgbString, "%x", &rgb);
+        //temp patch
+        if (rgb && ((rgb & 0x01010101) == rgb))
+        {
+            rgb *= 0xFF;
+        }
+        return cv::Scalar(rgb & 0xFF, (rgb >> 8) & 0xFF, (rgb >> 16) & 0xFF);
     }
 
 
@@ -228,38 +293,6 @@ namespace util
             0, 0,        0,         1);
     }
 
-    template<typename _Tp>
-    cv::Matx<_Tp, 4, 4> colorSpin(double a)
-    {
-        double b = 1.0 - a;
-        return cv::Matx<_Tp, 4, 4>(
-            b, a, 0, 0,
-            0, b, a, 0,
-            a, 0, b, 0,
-            0, 0, 0, 1);
-    }
-
-    inline cv::Scalar toColor(cv::Matx<float, 4, 1> const &m) { return cv::Scalar(255.0 * m(0), 255.0 * m(1), 255.0 * m(2), 255.0 * m(3)); }
-
-    //  Assumes provided Scalar is in BGR order and scaled 0..255; returns string as "RRGGBB"
-    inline std::string toRgbHexString(cv::Scalar const &bgr) 
-    {
-        char str[8];
-        sprintf_s(str, "%02x%02x%02x",
-            (uchar)(0.5 + bgr(2)),
-            (uchar)(0.5 + bgr(1)),
-            (uchar)(0.5 + bgr(0))
-        );
-        return str;
-    }
-
-    //  Assumes provided string is "RRGGBB"; returns Scalar in BGR order
-    inline cv::Scalar fromRgbHexString(char const * rgbString)
-    {
-        uint32_t rgb;
-        sscanf(rgbString, "%x", &rgb);
-        return cv::Scalar(rgb & 0xFF, (rgb >> 8) & 0xFF, (rgb >> 16) & 0xFF);
-    }
 
 #pragma region HSV
 
@@ -267,7 +300,7 @@ namespace util
 
     inline cv::Scalar cvtColor(cv::Scalar const &v, cv::ColorConversionCodes cvtCode)
     {
-        cv::Mat3f mat(1, 1, cv::Vec3f(v(0), v(1), v(2)));
+        cv::Mat3f mat(1, 1, cv::Vec3f((float)v(0), (float)v(1), (float)v(2)));
         cv::cvtColor(mat, mat, cvtCode);
         auto const &p = mat(0, 0);
         return cv::Scalar(p(0), p(1), p(2), 1.0);
@@ -365,3 +398,89 @@ namespace util
     }
 
 }   // namespace util
+
+
+#pragma region Serialization
+
+using json = nlohmann::basic_json<>;
+
+template<typename _Tp>
+void to_json(json &j, cv::Scalar_<_Tp> const &color)
+{
+    j = util::toRgbHexString(255.0 * color);
+}
+
+template<typename _Tp>
+void from_json(json const &j, cv::Scalar_<_Tp> &color)
+{
+    if (j.is_array())
+    {
+        throw(std::exception("todo"));
+    }
+    if (j.is_string())
+    {
+        color = util::fromRgbHexString(j.get<std::string>().c_str()) / 255.0;
+    }
+    else
+    {
+        throw(std::exception("not convertible to color"));
+    }
+}
+
+// serialize vector of points
+
+template<typename _Tp>
+void to_json(json &j, std::vector<cv::Point_<_Tp> > const &polygon)
+{
+    j = nlohmann::json::array();
+    for (auto &pt : polygon)
+    {
+        j.push_back(pt.x);
+        j.push_back(pt.y);
+    }
+}
+
+template<typename _Tp>
+void from_json(json const &j, std::vector<cv::Point_<_Tp> > &polygon)
+{
+    if (!j.is_array())
+        throw(std::exception("Not JSON array type"));
+
+    polygon.clear();
+    polygon.reserve(j.size());
+
+    for (int i = 0; i < j.size(); i += 2)
+        polygon.push_back(cv::Point2f(j[i], j[i + 1]));
+}
+
+// serialize M x N matrix
+
+template<typename _Tp, int m, int n>
+void to_json(json &j, cv::Matx<_Tp, m, n> const &mat)
+{
+    j = nlohmann::json::array();
+    for (int r = 0; r < m; ++r)
+        for (int c = 0; c < n; ++c)
+            j[r].push_back((float)mat(r, c));
+    //sz += std::to_string(mat(r, j)) + (j < n - 1 ? ", " : r < n - 1 ? ",\n  " : "\n  ]");
+}
+
+template<typename _Tp, int m, int n>
+void from_json(json const &j, cv::Matx<_Tp, m, n> &mat)
+{
+    for (int r = 0; r < m; ++r)
+        for (int c = 0; c < n; ++c)
+            mat(r, c) = j[r][c];
+    //sz += std::to_string(mat(r, j)) + (j < n - 1 ? ", " : r < n - 1 ? ",\n  " : "\n  ]");
+}
+
+template<typename _Tp, int m, int n>
+void from_json(json const &j, std::vector<cv::Matx<_Tp, m, n> > &mats)
+{
+    mats.resize(j.size());
+    for (int i = 0; i < j.size(); ++i)
+        from_json(j[i], mats[i]);
+}
+
+#pragma endregion
+

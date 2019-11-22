@@ -387,9 +387,13 @@ public:
         case 'x':
         {
             int count = 0;
-            for (int idx = 0; idx < 100000 && count<1; ++idx)
+
+            std::vector<qnode> nodes;
+            cv::Rect2f rc(2, 3, 10, 7);
+            pTree->getNodesIntersecting(rc, nodes);
+            for (auto &node : nodes)
             {
-                count += pTree->removeNode(-1);
+                count += pTree->removeNode(node.id);
             }
             if (count)
             {
@@ -439,9 +443,18 @@ static void onMouse(int event, int x, int y, int, void*)
 {
     if (event != cv::MouseEventTypes::EVENT_LBUTTONDOWN)
         return;
-    cv::Point seed = cv::Point(x, y);
 
-    the.canvas.image = the.loadedImage;
+    cv::Point seed = cv::Point(x, y);
+    auto pt = the.canvas.canvasToModel(seed);
+    std::vector<qnode> nodes;
+    the.pTree->getNodesIntersecting(cv::Rect2f(pt, cv::Size2f(11, 8)), nodes);
+    for (auto &node : nodes)
+    {
+        the.pTree->removeNode(node.id);
+    }
+    the.pTree->redrawAll(the.canvas);
+    cv::imshow("Memtest", the.canvas.image); // Show our image inside it.
+
 }
 
 
@@ -456,7 +469,7 @@ int main(int argc, char** argv)
 
     cv::namedWindow("Memtest", cv::WindowFlags::WINDOW_AUTOSIZE); // Create a window for display.
 
-    cv::setMouseCallback("image", onMouse, 0);
+    cv::setMouseCallback("Memtest", onMouse, 0);
 
 
     //try {

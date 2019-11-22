@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ColorTransform.h"
 #include "util.h"
 #include <opencv2/core/core.hpp>
 #include <vector>
@@ -47,6 +48,13 @@ public:
         globalTransform = util::transform3x3::centerAndFit(rect, cv::Rect_<float>(0.0f, 0.0f, (float)image.cols, (float)image.rows), buffer, true);
     }
 
+    cv::Point2f canvasToModel(cv::Point2f pt)
+    {
+        Matx33 m = globalTransform.inv(cv::DecompTypes::DECOMP_LU);
+        auto t = m * cv::Point3f(pt.x, pt.y, 1.0f);
+        return cv::Point2f(t.x, t.y);
+    }
+
     void fillPoly(std::vector<cv::Point2f> const &polygon, Matx33 const &transform, cv::Scalar color, int lineThickness, cv::Scalar lineColor)
     {
         Matx33 m = globalTransform * transform;
@@ -76,19 +84,19 @@ class qtransform
 public:
     string transformMatrixKey;
     Matx33 transformMatrix;
-    Matx44 colorTransform;
+    ColorTransform colorTransform;
     double gestation;
 
 public:
 
-    qtransform(Matx33 const &transformMatrix_ = Matx33::eye(), Matx44 const &colorTransform_ = Matx44::eye(), double gestation_ = 1.0)
+    qtransform(Matx33 const &transformMatrix_ = Matx33::eye(), ColorTransform const &colorTransform_ = ColorTransform(), double gestation_ = 1.0)
     {
         transformMatrix = transformMatrix_;
         colorTransform = colorTransform_;
         gestation = gestation_;
     }
 
-    qtransform(string key_, Matx33 const &transformMatrix_ = Matx33::eye(), Matx44 const &colorTransform_ = Matx44::eye(), double gestation_ = 1.0)
+    qtransform(string key_, Matx33 const &transformMatrix_ = Matx33::eye(), ColorTransform const &colorTransform_ = ColorTransform(), double gestation_ = 1.0)
     {
         transformMatrixKey = key_;
         transformMatrix = transformMatrix_;
@@ -97,7 +105,7 @@ public:
     }
 
     template<typename _Tp>
-    qtransform(_Tp m00, _Tp m01, _Tp mtx, _Tp m10, _Tp m11, _Tp mty, Matx44 const &colorTransform_)
+    qtransform(_Tp m00, _Tp m01, _Tp mtx, _Tp m10, _Tp m11, _Tp mty, ColorTransform const &colorTransform_)
     {
         transformMatrix = Matx33(m00, m01, mtx, m10, m11, mty, 0, 0, 1);
         colorTransform = colorTransform_;
@@ -107,93 +115,12 @@ public:
     qtransform(double angle, double scale, cv::Point2f translate)
     {
         transformMatrix = util::transform3x3::getRotationMatrix2D(Point2f(), angle, scale, translate.x, translate.y);
-        colorTransform = colorTransform.eye();
-        colorTransform(2, 2) = 0.94f;
-        colorTransform(1, 1) = 0.96f;
+        //colorTransform = colorTransform.eye();
+        //colorTransform(2, 2) = 0.94f;
+        //colorTransform(1, 1) = 0.96f;
         gestation = 1.0;
     }
 };
-
-    // serialize colors
-
-    template<typename _Tp>
-    void to_json(json &j, cv::Scalar_<_Tp> const &color)
-    {
-        j = util::toRgbHexString(color);
-    }
-
-    template<typename _Tp>
-    void from_json(json const &j, cv::Scalar_<_Tp> &color)
-    {
-        if (j.is_array())
-        {
-            throw(std::exception("todo"));
-        }
-        if (j.is_string())
-        {
-            color = util::fromRgbHexString(j.get<string>().c_str());
-        }
-        else
-        {
-            throw(std::exception("not convertible to color"));
-        }
-    }
-    
-    // serialize vector of points
-
-    template<typename _Tp>
-    void to_json(json &j, std::vector<cv::Point_<_Tp> > const &polygon)
-    {
-        j = nlohmann::json::array();
-        for (auto &pt : polygon)
-        {
-            j.push_back(pt.x);
-            j.push_back(pt.y);
-        }
-    }
-
-    template<typename _Tp>
-    void from_json(json const &j, std::vector<cv::Point_<_Tp> > &polygon)
-    {
-        if (!j.is_array())
-            throw(std::exception("Not JSON array type"));
-
-        polygon.clear();
-        polygon.reserve(j.size());
-
-        for (int i = 0; i < j.size(); i += 2)
-            polygon.push_back(cv::Point2f(j[i], j[i + 1]));
-    }
-
-    // serialize M x N matrix
-
-    template<typename _Tp, int m, int n>
-    void to_json(json &j, cv::Matx<_Tp, m, n> const &mat)
-    {
-        j = nlohmann::json::array();
-        for (int r = 0; r < m; ++r)
-            for (int c = 0; c < n; ++c)
-                j[r].push_back((float)mat(r, c));
-                //sz += std::to_string(mat(r, j)) + (j < n - 1 ? ", " : r < n - 1 ? ",\n  " : "\n  ]");
-    }
-
-    template<typename _Tp, int m, int n>
-    void from_json(json const &j, cv::Matx<_Tp, m, n> &mat)
-    {
-        for (int r = 0; r < m; ++r)
-            for (int c = 0; c < n; ++c)
-                mat(r, c) = j[r][c];
-        //sz += std::to_string(mat(r, j)) + (j < n - 1 ? ", " : r < n - 1 ? ",\n  " : "\n  ]");
-    }
-
-    template<typename _Tp, int m, int n>
-    void from_json(json const &j, std::vector<cv::Matx<_Tp, m, n> > &mats)
-    {
-        mats.resize(j.size());
-        for (int i = 0; i < j.size(); ++i)
-            from_json(j[i], mats[i]);
-    }
-
 
     inline void to_json(json &j, qtransform const &t)
     {
@@ -239,10 +166,22 @@ public:
     double      beginTime       = 0.0;
     int         generation      = 0;
     Matx33      globalTransform;
-    cv::Scalar  color = cv::Scalar(1, 0, 0, 1);
+    cv::Scalar  color = cv::Scalar(1.0, 0.5, 0.0, 1.0);
 
-    qnode(double beginTime_ = 0)
+    qnode(qnode const &node)
     {
+        id              = node.id;
+        parentId        = node.parentId;
+        beginTime       = node.beginTime;
+        generation      = node.generation;
+        globalTransform = node.globalTransform;
+        color           = node.color;
+    }
+
+    qnode(int id_=0, int parentId_=0, double beginTime_ = 0)
+    {
+        id = id_;
+        parentId = parentId_;
         beginTime = beginTime_;
         generation = 0;
         color = cv::Scalar(1, 1, 1, 1);
@@ -252,11 +191,6 @@ public:
     inline float det() const { return (globalTransform(0, 0) * globalTransform(1, 1) - globalTransform(0, 1) * globalTransform(1, 0)); }
 
     inline bool operator!() const { return !( fabs(det()) > 1e-5 ); }
-
-    void getPolyPoints(std::vector<cv::Point2f> const &points, std::vector<cv::Point2f> &transformedPoints) const
-    {
-        cv::transform(points, transformedPoints, globalTransform.get_minor<2, 3>(0, 0));
-    }
 
     struct EarliestFirst
     {
@@ -418,6 +352,14 @@ public:
 
     // invoked when a viable node is pulled from the queue. override to update drawing, data structures, etc.
     virtual void addNode(qnode & node) { }
+
+    virtual void getNodesIntersecting(cv::Rect2f const &rect, std::vector<qnode> &nodes) const {}
+
+    // convenience fn: get node's polygon in model coordinates
+    virtual void getPolyPoints(qnode const &node, std::vector<cv::Point2f> &transformedPoints) const
+    {
+        cv::transform(polygon, transformedPoints, node.globalTransform.get_minor<2, 3>(0, 0));
+    }
 
     virtual int removeNode(int id) { return 0; }
 

@@ -13,6 +13,7 @@
     <ClInclude Include="util.h" />
     <ClInclude Include="ReptileTree.h" />
     <ClInclude Include="SelfLimitingPolygonTree.h" />
+    <ClInclude Include="ColorTransform.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

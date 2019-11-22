@@ -47,7 +47,7 @@ void qtree::beget(qnode const & parent, qtransform const & t, qnode & child)
 
     child.globalTransform = parent.globalTransform * t.transformMatrix;
 
-    child.color = t.colorTransform * parent.color;
+    child.color = t.colorTransform.apply(parent.color);
 }
 
 //  Node draw function for tree of nodes with all the same polygon
