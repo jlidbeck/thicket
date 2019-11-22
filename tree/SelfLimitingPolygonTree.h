@@ -183,11 +183,14 @@ public:
     virtual void create() override
     {
         // initialize intersection field
-        int size = (int)(0.5 + maxRadius * 2 * fieldResolution);
-        m_field.create(size, size);
+        auto rc = getBoundingRect();
+        auto fieldSize = rc.size() * (float)fieldResolution;
+        m_field.create(fieldSize);
         m_field = 0;
         m_field.copyTo(m_fieldLayer);
-        m_fieldTransform = util::transform3x3::getScaleTranslate((double)fieldResolution, maxRadius*fieldResolution, maxRadius*fieldResolution);
+
+        // maps min corner of the bounding rect to (0,0) of the field
+        m_fieldTransform = util::transform3x3::getScaleTranslate((double)fieldResolution, (double)-rc.x*fieldResolution, (double)-rc.y*fieldResolution);
 
         // clear and initialize the queue with the seed
 
