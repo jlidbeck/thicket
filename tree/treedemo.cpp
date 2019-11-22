@@ -359,6 +359,11 @@ public:
             restart = true;
             break;
 
+        case 'p':   // randomize drawPolygon
+            pTree->randomizeTransforms(4);
+            restart = true;
+            break;
+
         case '.':
         {
             stepping = true;

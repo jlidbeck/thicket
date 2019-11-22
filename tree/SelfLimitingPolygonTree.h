@@ -31,6 +31,8 @@ protected:
     int starAngle = 0;
     cv::Scalar rootNodeColor = cv::Scalar(0.0, 0.0, 1.0, 1.0);
 
+    std::vector<cv::Point2f> drawPolygon;
+
     // controls size of intersection field--in pixels per model unit, independent of display resolution.
     int fieldResolution = 40;
 
@@ -56,6 +58,9 @@ public:
     {
 	    qtree::to_json(j);
 
+        if(!drawPolygon.empty())
+            ::to_json(j["drawPolygon"], drawPolygon);
+
         j["_class"] = "SelfLimitingPolygonTree";
         j["fieldResolution"] = fieldResolution;
         j["polygonSides"] = polygonSides;
@@ -67,6 +72,10 @@ public:
     virtual void from_json(json const &j) override
     {
         qtree::from_json(j);
+
+        drawPolygon.clear();
+        if(j.contains("drawPolygon"))
+            ::from_json(j.at("drawPolygon"), drawPolygon);
 
         fieldResolution = j.at("fieldResolution");
         polygonSides = (j.contains("polygonSides") ? j.at("polygonSides").get<int>() : 5);
@@ -158,6 +167,17 @@ public:
                 t.gestation = 1.0 + r(10.0);
             }
         }
+
+        if (flags & 4)
+        {
+            // modify polygon that's drawn: remove up to (N-3) vertices
+            drawPolygon = polygon;
+            for (int i = r((int)polygon.size() - 3); i >= 0; --i)
+            {
+                drawPolygon.erase(drawPolygon.begin() + r((int)drawPolygon.size()));
+            }
+        }
+
     }
 
     virtual void create() override
@@ -546,7 +566,7 @@ public:
 
         rootNodeColor = cv::Scalar(1.0, 1.0, 0.0, 1);
 
-        // override polygon
+        // override polygon with thorn/versatile polygon
         polygon.clear();
         cv::Point2f pt(0, 0);
         polygon.push_back(pt);
@@ -558,6 +578,10 @@ public:
         polygon.push_back(pt += util::polygon::headingStep(240.0f));
         polygon.push_back(pt += util::polygon::headingStep(255.0f));
         polygon.push_back(pt += util::polygon::headingStep(270.0f));
+
+        drawPolygon = polygon;
+        // modify polygon that's drawn
+        //drawPolygon.erase(drawPolygon.begin() + 1, drawPolygon.begin() + 5);
 
         // override edge transforms
         transforms.clear();
@@ -589,6 +613,11 @@ public:
     virtual void from_json(json const &j) override
     {
         SelfLimitingPolygonTree::from_json(j);
+
+        if (drawPolygon.empty())
+        {
+            drawPolygon = polygon;
+        }
     }
 
     virtual void create() override
@@ -604,6 +633,30 @@ public:
         imagePath = imagePath.replace_extension("mask.png");
         cv::imwrite(imagePath.string(), m_field);
     }
+
+    void drawNode(qcanvas &canvas, qnode const &node) override
+    {
+        cv::Scalar color =
+            //(node.det() < 0) ? 255.0 * (cv::Scalar(1.0, 1.0, 1.0, 1.0) - node.color) : 
+            255.0 * node.color;
+
+        // todo
+        canvas.fillPoly(drawPolygon, node.globalTransform, 255.0 * node.color, lineThickness, lineColor);
+
+        // modify polygon that's drawn
+        //pts[0].resize(4);
+
+        //float d = cv::norm(pts[0][0] - pts[0][1]);
+        //auto ctr0 = (pts[0][0] + pts[0][1] + pts[0][2] + pts[0][8]) / 4;
+        //cv::circle(canvas.image, ctr0, d*0.3f, color, -1, cv::LineTypes::FILLED, 4);
+        //auto ctr1 = (pts[0][2] + pts[0][3] + pts[0][7] + pts[0][8]) / 4;
+        //cv::circle(canvas.image, ctr1, d*0.2f, color, -1, cv::LineTypes::FILLED, 4);
+        //auto ctr2 = (pts[0][3] + pts[0][4] + pts[0][6] + pts[0][7]) / 4;
+        //cv::circle(canvas.image, ctr2, d*0.15f, color, -1, cv::LineTypes::FILLED, 4);
+        //auto ctr3 = (pts[0][4] + pts[0][6]) / 2;
+        //cv::circle(canvas.image, ctr3, d*0.1f, color, -1, cv::LineTypes::FILLED, 4);
+    }
+
 
 };
 
