@@ -18,7 +18,10 @@ using std::cout;
 using std::endl;
 
 
-#define DDIM 1200
+#define DDIM 1500
+
+cv::Size renderSizePreview  = cv::Size(DDIM, DDIM/2);
+cv::Size renderSizeHD       = cv::Size(6000, 1500);
 
 
 class TreeDemo
@@ -27,7 +30,9 @@ public:
     cv::Mat loadedImage;
     qcanvas canvas;
 
-    SelfLimitingPolygonTree defaultTree;
+    cv::Size renderSize = renderSizePreview;
+
+    ThornTree defaultTree;
     qtree *pTree = nullptr;
 
     int minNodesProcessedPerFrame = 1;
@@ -328,12 +333,67 @@ public:
         }
 
         case '+':
-            pTree->maxRadius *= 2.0f;
+            pTree->domain = pTree->domain * 2.0f;
             restart = true;
             break;
 
         case '-':
-            pTree->maxRadius *= 0.5f;
+            pTree->domain = pTree->domain * 0.5f;
+            restart = true;
+            break;
+
+        case '0':   // recenter model in domain
+            pTree->domain.x = -0.5f * pTree->domain.width;
+            pTree->domain.y = -0.5f * pTree->domain.height;
+            restart = true;
+            break;
+
+        case '1':
+        {
+            // cycle thru aspect ratios
+            float a = pTree->domain.width / pTree->domain.height;
+            if (a == 1.0f)
+                pTree->domain.width *= 2.0f;
+            else if (a == 2.0f)
+                pTree->domain.width *= 2.0f;
+            else if (a == 4.0f)
+                pTree->domain = cv::Rect_<float>(pTree->domain.x, pTree->domain.y, pTree->domain.width / 4.0f, pTree->domain.height * 2.0f);
+            else if (a == 0.5f)
+                pTree->domain.height *= 2.0f;
+            else if (a > 1.0f)
+                pTree->domain.width = pTree->domain.height;
+            else
+                pTree->domain.height = pTree->domain.width;
+            restart = true;
+            break;
+        }
+
+        case '2':
+            switch (pTree->domainShape)
+            {
+            case qtree::DomainShape::RECT: pTree->domainShape = qtree::DomainShape::ELLIPSE; break;
+            case qtree::DomainShape::ELLIPSE: pTree->domainShape = qtree::DomainShape::RECT; break;
+            }
+            restart = true;
+            break;
+                
+        case 0x250000:  // left
+            pTree->domain.x += 0.25 * std::min( pTree->domain.width, pTree->domain.height);
+            restart = true;
+            break;
+
+        case 0x260000:  // up
+            pTree->domain.y -= 0.25 * std::min( pTree->domain.width, pTree->domain.height);
+            restart = true;
+            break;
+
+        case 0x270000:  // right
+            pTree->domain.x -= 0.25 * std::min( pTree->domain.width, pTree->domain.height);
+            restart = true;
+            break;
+
+        case 0x280000:  // down
+            pTree->domain.y += 0.25 * std::min( pTree->domain.width, pTree->domain.height);
             restart = true;
             break;
 

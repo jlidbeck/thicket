@@ -85,7 +85,7 @@ public:
 
         cv::Point center = getNodeKey(node);
 
-        if (center.x < -maxRadius || center.x>maxRadius || center.y < -maxRadius || center.y>maxRadius) 
+        if(!isPointInBounds(center))
             return false;
 
         if (m_covered.find(center) == m_covered.end())

@@ -91,13 +91,15 @@ public:
     {
         qtree::setRandomSeed(randomize);
 
-        maxRadius = 10.0;
+        float maxRadius = 10.0;
+        domain = cv::Rect_<float>(-maxRadius, -maxRadius, maxRadius * 2, maxRadius * 2);
         polygonSides = 5;
         starAngle = 36;
 
         if (randomize)
         {
             maxRadius = 5.0 + r(40.0);
+            domain = cv::Rect_<float>(-maxRadius, -maxRadius, maxRadius * 2, maxRadius * 2);
             polygonSides = (randomize % 6) + 3;
             starAngle = ((randomize % 12) < 6 ? 36 : 0);
             //gestationRandomness = r(200.0);
@@ -253,7 +255,7 @@ public:
 
         // test each vertex against maxRadius
         for (auto const& p : v)
-            if (p.dot(p) > maxRadius*maxRadius)
+            if(!isPointInBounds(p))
                 return false;
 
         // transform model polygon to field coords
@@ -418,8 +420,9 @@ public:
         SelfLimitingPolygonTree::setRandomSeed(randomize);
 
         fieldResolution = 100.0;
-        maxRadius = 4.0;
-        
+        float maxRadius = 4.0;
+        domain = cv::Rect_<float>(-maxRadius, -maxRadius, maxRadius * 2, maxRadius * 2);
+
         // ratio: child size / parent size
         std::array<float, 5> ratioPresets = { {
             (sqrt(5.0f) - 1.0f) / 2.0f,        // phi
@@ -486,7 +489,8 @@ public:
         SelfLimitingPolygonTree::setRandomSeed(randomize);
 
         fieldResolution = 200;
-        maxRadius = 10;
+        float maxRadius = 10;
+        domain = cv::Rect_<float>(-maxRadius, -maxRadius, maxRadius * 2, maxRadius * 2);
         gestationRandomness = 10;
         rootNodeColor = cv::Scalar(0.2, 0.5, 0, 1);
     }
@@ -564,7 +568,8 @@ public:
         SelfLimitingPolygonTree::setRandomSeed(randomize);
 
         fieldResolution = 20;
-        maxRadius = 50;
+        float maxRadius = 50;
+        domain = cv::Rect_<float>(-maxRadius, -maxRadius, maxRadius * 2, maxRadius * 2);
         gestationRandomness = 0;
 
         rootNodeColor = cv::Scalar(1.0, 1.0, 0.0, 1);

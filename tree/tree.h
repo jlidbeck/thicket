@@ -224,7 +224,13 @@ protected:
 public:
     // settings
     string name;
-    double maxRadius = 100.0;
+    //double maxRadius = 100.0;
+    cv::Rect_<float> domain = cv::Rect_<float>(-100.0, -100.0, 100.0 * 2, 100.0 * 2);
+
+    enum class DomainShape {
+        RECT,
+        ELLIPSE
+    } domainShape = DomainShape::RECT;
     int randomSeed = 0;
 
     // same polygon for all nodes
@@ -266,7 +272,15 @@ public:
 
         j["name"] = name;
         j["randomSeed"] = randomSeed;
-        j["maxRadius"] = maxRadius;
+
+        //j["maxRadius"] = maxRadius;
+        auto rc = getBoundingRect();
+        //j["bounds"]["radius"] = maxRadius;
+        j["bounds"]["shape"] = (domainShape == DomainShape::ELLIPSE ? "ellipse" : "rect");
+        j["bounds"]["xmin"] = rc.x;
+        j["bounds"]["ymin"] = rc.y;
+        j["bounds"]["width"] = rc.width;
+        j["bounds"]["height"] = rc.height;
 
         ::to_json(j["polygon"], polygon);
         for (auto &t : transforms)
@@ -292,7 +306,27 @@ public:
 
         name = (j.contains("name") ? j.at("name").get<string>() : "");
         randomSeed = j.at("randomSeed");
-        maxRadius  = j.at("maxRadius");
+
+        if (j.contains("maxRadius"))
+        {
+            // legacy
+            float maxRadius = j.at("maxRadius");
+            domain = cv::Rect_<float>(-maxRadius, -maxRadius, maxRadius * 2, maxRadius * 2);
+            domainShape = DomainShape::ELLIPSE;
+        }
+
+        if (j.contains("bounds") && j["bounds"].contains("xmin"))
+        {
+            domain = cv::Rect_<float>(
+                domain.x      = j["bounds"]["xmin"],
+                domain.y      = j["bounds"]["ymin"],
+                domain.width  = j["bounds"]["width"],
+                domain.height = j["bounds"]["height"]
+                );
+
+            domainShape = (j["bounds"]["shape"] == string("ellipse") ? DomainShape::ELLIPSE : DomainShape::RECT);
+        }
+
         ::from_json( j.at("polygon"), polygon );
         ::from_json( j.at("transforms"), transforms );
 
@@ -371,8 +405,20 @@ public:
 
     virtual cv::Rect_<float> getBoundingRect() const
     {
-        float r = (float)maxRadius;
-        return cv::Rect_<float>(-r, -r, 2 * r, 2 * r);
+        return domain;
+    }
+
+    virtual bool isPointInBounds(cv::Point2f pt) const
+    {
+        switch (domainShape)
+        {
+        case DomainShape::ELLIPSE:
+            return (pt.dot(pt) <= domain.width*domain.height/4.0f); // circular bounds
+
+        case DomainShape::RECT:
+        default:
+            return(domain.contains(pt));    // rectangular bounds
+        }
     }
 
     virtual void redrawAll(qcanvas &canvas) {}
