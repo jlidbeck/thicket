@@ -15,13 +15,12 @@ namespace fs = std::filesystem;
 
 
 using std::cout;
+using std::cin;
 using std::endl;
 
 
-#define DDIM 1500
-
-cv::Size renderSizePreview  = cv::Size(DDIM, DDIM/2);
-cv::Size renderSizeHD       = cv::Size(6000, 1500);
+cv::Size renderSizePreview  = cv::Size(200, 200);
+cv::Size renderSizeHD       = cv::Size(2000, 1500);
 
 
 class TreeDemo
@@ -82,7 +81,7 @@ public:
                 pTree->to_json(settingsJson);
                 cout << settingsJson << endl;
 
-                canvas.image = cv::Mat3b(DDIM, DDIM);
+                canvas.image = cv::Mat3b(renderSize);
                 canvas.image = 0;
                 canvas.setScaleToFit(pTree->getBoundingRect(), imagePadding);
 
@@ -302,6 +301,11 @@ public:
             openFile(idx);
             break;
         }
+
+		case 'h':
+			renderSize = (renderSize == renderSizePreview ? renderSizeHD : renderSizePreview);
+			restart = true;
+			break;
 
         case 'O':
         case 0x210000:      // PageUp
