@@ -210,7 +210,6 @@ public:
         rootNode.id = 0;
         rootNode.parentId = 0;
         rootNode.beginTime = 0;
-        rootNode.generation = 0;
         rootNode.color = rootNodeColor;
 
         // center root node at origin
@@ -294,13 +293,15 @@ public:
 
     virtual void addNode(qnode &currentNode) override
     {
+        qtree::addNode(currentNode);
+
         m_nodeList.push_back(currentNode);
 
         // update field image: composite new node
         cv::bitwise_or(m_field(m_fieldLayerBoundingRect), m_fieldLayer(m_fieldLayerBoundingRect), m_field(m_fieldLayerBoundingRect));
     }
 
-    auto findNode(int id)
+    std::list<qnode>::const_iterator findNode(int id) const
     {
         for (auto it = m_nodeList.begin(); it!=m_nodeList.end(); ++it)
         {
@@ -312,19 +313,57 @@ public:
         return m_nodeList.end();
     }
 
+    std::list<qnode>::iterator findNode(int id)
+    {
+        for (auto it = m_nodeList.begin(); it != m_nodeList.end(); ++it)
+        {
+            if (it->id == id)
+            {
+                return it;
+            }
+        }
+        return m_nodeList.end();
+    }
+
+    void getLineage(qnode const & node, std::vector<string> & lineage) const override
+    {
+        lineage.clear();
+        lineage.push_back(node.sourceTransform);
+        int id = node.parentId;
+        while (id != 0)
+        {
+            auto it = findNode(id);
+            if (it == m_nodeList.end())
+            {
+                cout << "Parent id not found:>" << id << endl;
+                return;
+            }
+            lineage.push_back(it->sourceTransform);
+            id = it->parentId;
+        }
+    }
+
     virtual void getNodesIntersecting(cv::Rect2f const &rect, std::vector<qnode> &nodes) const override
     {
         for (auto & node : m_nodeList)
         {
             std::vector<cv::Point2f> pts;
             getPolyPoints(node, pts);
-            // this is not a proper intersection
-            for (auto const & pt : pts)
+
+            if (cv::pointPolygonTest(pts, rect.tl(), false) >= 0.0)
             {
-                if (rect.contains(pt))
+                nodes.push_back(node);
+            }
+            else
+            {
+                // this is not a proper intersection
+                for (auto const& pt : pts)
                 {
-                    nodes.push_back(node);
-                    break;
+                    if (rect.contains(pt))
+                    {
+                        nodes.push_back(node);
+                        break;
+                    }
                 }
             }
         }
@@ -451,7 +490,7 @@ public:
 
     virtual void to_json(json &j) const override
     {
-	    SelfLimitingPolygonTree::to_json(j);
+        SelfLimitingPolygonTree::to_json(j);
 
         j["_class"] = "ScaledPolygonTree";
         j["ratio"] = m_ratio;
@@ -613,8 +652,8 @@ public:
 
     virtual void to_json(json &j) const override
     {
-	    SelfLimitingPolygonTree::to_json(j);
-		
+        SelfLimitingPolygonTree::to_json(j);
+        
         j["_class"] = "ThornTree";
     }
 

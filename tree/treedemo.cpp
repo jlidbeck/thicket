@@ -53,7 +53,8 @@ public:
     bool randomize = true;
     bool quit = false;
 
-    int mostRecentFileIndex = -1;
+	// current file pointer. should usually point to existing file "tree%04d"
+    int currentFileIndex = -1;
 
 
     void run()
@@ -76,6 +77,7 @@ public:
                     randomize = false;
                 }
                 pTree->create();
+                pTree->transformCounts.clear();
 
                 json settingsJson;
                 pTree->to_json(settingsJson);
@@ -202,56 +204,56 @@ public:
 
     const int MAX = 1000;
 
-    //  finds most recent file and sets {mostRecentFileIndex}.
+    //  finds most recent file and sets {currentFileIndex}.
 
     void findNextUnusedFileIndex()
     {
-        mostRecentFileIndex = MAX;
+        currentFileIndex = MAX;
         findPreviousFile();
-        ++mostRecentFileIndex;
+        ++currentFileIndex;
     }
 
-    //  mostRecentFileIndex will be set to 0 if no saved files are found
+    //  currentFileIndex will be set to 0 if no saved files are found
     void findPreviousFile()
     {
-        if (mostRecentFileIndex < 0)
-            mostRecentFileIndex = 0;
+        if (currentFileIndex < 0)
+            currentFileIndex = 0;
 
         fs::path jsonPath;
         char filename[40];
-        for (int i=mostRecentFileIndex+MAX-1; (i%=MAX) != mostRecentFileIndex; i+=(MAX-1))
+        for (int i=currentFileIndex+MAX-1; (i%=MAX) != currentFileIndex; i+=(MAX-1))
         {
             sprintf_s(filename, "tree%04d.settings.json", i);
             if (fs::exists(filename))
             {
-                mostRecentFileIndex = i;
+                currentFileIndex = i;
                 return;
             }
         }
 
-        mostRecentFileIndex = -1;// nothing found
+        currentFileIndex = -1;// nothing found
     }
 
-    //  finds most recent file and sets {mostRecentFileIndex}.
-    //  mostRecentFileIndex will be set to 0 if no saved files are found
+    //  finds most recent file and sets {currentFileIndex}.
+    //  currentFileIndex will be set to 0 if no saved files are found
     void findNextFile()
     {
-        if (mostRecentFileIndex < 0)
-            mostRecentFileIndex = 0;
+        if (currentFileIndex < 0)
+            currentFileIndex = 0;
 
         fs::path jsonPath;
         char filename[40];
-        for (int i = mostRecentFileIndex+1; (i%=MAX) != mostRecentFileIndex; i+=(1))
+        for (int i = currentFileIndex+1; (i%=MAX) != currentFileIndex; i+=(1))
         {
             sprintf_s(filename, "tree%04d.settings.json", i);
             if (fs::exists(filename))
             {
-                mostRecentFileIndex = i;
+                currentFileIndex = i;
                 return;
             }
         }
 
-        mostRecentFileIndex = -1;// nothing found
+        currentFileIndex = -1;// nothing found
     }
 
     void processKey(int key)
@@ -267,10 +269,16 @@ public:
 
             fs::path imagePath;
             char filename[24];
-            sprintf_s(filename, "tree%04d.png", mostRecentFileIndex);
+            sprintf_s(filename, "tree%04d.png", currentFileIndex);
             imagePath = filename;
 
             cv::imwrite(imagePath.string(), canvas.image);
+
+			if (pTree->name.empty())
+			{
+				sprintf_s(filename, "tree%04d", currentFileIndex);
+				pTree->name = filename;
+			}
 
             // allow extending classes to customize the save
             pTree->saveImage(imagePath);
@@ -288,17 +296,19 @@ public:
 
         case 'o':
         {
-            if (mostRecentFileIndex < 0)
+            if (currentFileIndex < 0)
             {
                 findPreviousFile();
             }
 
             int idx = -1;
-            cout << "Current file index is " << mostRecentFileIndex << ".\nEnter index: ";
-            std::cin >> idx;
-            if (idx < 0)
-                idx = mostRecentFileIndex;
-            openFile(idx);
+            cout << "Current file index is " << currentFileIndex << ".\nEnter index: ";
+			if (std::cin >> idx)
+			{
+				if (idx < 0)
+					idx = currentFileIndex;
+				openFile(idx);
+			}
             break;
         }
 
@@ -310,13 +320,13 @@ public:
         case 'O':
         case 0x210000:      // PageUp
             findPreviousFile();
-            openFile(mostRecentFileIndex);
+            openFile(currentFileIndex);
             break;
 
         case 0x220000:      // PageDown
         {
             findNextFile();
-            openFile(mostRecentFileIndex);
+            openFile(currentFileIndex);
             break;
         }
 
@@ -382,22 +392,22 @@ public:
             break;
                 
         case 0x250000:  // left
-            pTree->domain.x += 0.25 * std::min( pTree->domain.width, pTree->domain.height);
+            pTree->domain.x += 0.10f * std::min( pTree->domain.width, pTree->domain.height);
             restart = true;
             break;
 
         case 0x260000:  // up
-            pTree->domain.y -= 0.25 * std::min( pTree->domain.width, pTree->domain.height);
+            pTree->domain.y -= 0.10f * std::min( pTree->domain.width, pTree->domain.height);
             restart = true;
             break;
 
         case 0x270000:  // right
-            pTree->domain.x -= 0.25 * std::min( pTree->domain.width, pTree->domain.height);
+            pTree->domain.x -= 0.10f * std::min( pTree->domain.width, pTree->domain.height);
             restart = true;
             break;
 
         case 0x280000:  // down
-            pTree->domain.y += 0.25 * std::min( pTree->domain.width, pTree->domain.height);
+            pTree->domain.y += 0.10f * std::min( pTree->domain.width, pTree->domain.height);
             restart = true;
             break;
 
@@ -453,28 +463,59 @@ public:
             break;
         }
 
-        case 'x':
-        {
-            int count = 0;
-
-            std::vector<qnode> nodes;
-            cv::Rect2f rc(2, 3, 10, 7);
-            pTree->getNodesIntersecting(rc, nodes);
-            for (auto &node : nodes)
+        case 't':
+            cout << "=== " << pTree->name << " transforms: " << endl;
+            for (auto const &t : pTree->transforms)
             {
-                count += pTree->removeNode(node.id);
+                cout << std::setw(5) << pTree->transformCounts[t.transformMatrixKey] << "   " << t.transformMatrixKey << "   " << t.colorTransform.description() << endl;
             }
-            if (count)
+            break;
+
+        case 'T':
+        {
+            int idx;
+            cout << "Drop transform? ";
+            if (cin >> idx)
             {
-                cout << "** remove(" << 42 << "): " << count << " nodes removed\n";
-                pTree->redrawAll(canvas);
-                cv::imshow("Memtest", canvas.image); // Show our image inside it.
-                break;
+                pTree->transforms.erase(pTree->transforms.begin() + idx);
             }
             break;
         }
 
-        case 'X':
+
+        case 'x':
+        //{
+        //    int count = 0;
+
+        //    std::vector<qnode> nodes;
+        //    cv::Rect2f rc(2, 3, 10, 7);
+        //    pTree->getNodesIntersecting(rc, nodes);
+        //    for (auto &node : nodes)
+        //    {
+        //        std::vector<string> lineage;
+        //        pTree->getLineage(node, lineage);
+        //        cout << " x: [";
+        //        for (auto it = lineage.rbegin(); it != lineage.rend(); ++it) cout << *it << " ";
+        //        cout << "]\n";
+        //        count += pTree->removeNode(node.id);
+        //    }
+
+        //    //for (int idx = 0; idx < 100000 && count<1; ++idx)
+        //    //{
+        //    //    count += pTree->removeNode(-1);
+        //    //}
+
+        //    if (count)
+        //    {
+        //        cout << "** remove(" << 42 << "): " << count << " nodes removed\n";
+        //        pTree->redrawAll(canvas);
+        //        cv::imshow("Memtest", canvas.image); // Show our image inside it.
+        //        break;
+        //    }
+        //    break;
+        //}
+
+        //case 'X':
         {
             pTree->regrowAll();
             break;
@@ -516,6 +557,21 @@ static void onMouse(int event, int x, int y, int, void*)
     cv::Point seed = cv::Point(x, y);
     auto pt = the.canvas.canvasToModel(seed);
     std::vector<qnode> nodes;
+
+    // display info on node
+    the.pTree->getNodesIntersecting(cv::Rect2f(pt, cv::Size2f(0,0)), nodes);
+    for (auto& node : nodes)
+    {
+        vector<string> lineage;
+        the.pTree->getLineage(node, lineage);
+        cout << "Node[" << node.id << "]:";
+        for (auto& tname : lineage)
+            cout << " " << tname;
+        cout << endl;
+    }
+    return;
+
+    // delete block
     the.pTree->getNodesIntersecting(cv::Rect2f(pt, cv::Size2f(11, 8)), nodes);
     for (auto &node : nodes)
     {

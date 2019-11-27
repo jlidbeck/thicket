@@ -8,6 +8,8 @@
 #include <filesystem>
 #include <random>
 #include <nlohmann/json.hpp>
+#include <unordered_map>
+
 
 using json = nlohmann::basic_json<>;
 
@@ -122,40 +124,48 @@ public:
     }
 };
 
-    inline void to_json(json &j, qtransform const &t)
+inline void to_json(json &j, qtransform const &t)
+{
+    j = json {
+        { "gestation", t.gestation }
+    };
+
+    to_json(j["color"], t.colorTransform);
+
+    if (!t.transformMatrixKey.empty())
+        j["transformKey"] = t.transformMatrixKey;
+
+    to_json(j["transform"], t.transformMatrix);
+}
+
+inline void from_json(json const &j, qtransform &t)
+{
+    t.gestation = j.at("gestation");
+    from_json(j.at("color"),     t.colorTransform);
+    from_json(j.at("transform"), t.transformMatrix);
+    t.transformMatrixKey = (j.contains("transformKey") ? j.at("transformKey") : "");
+}
+
+inline void to_json(json &j, std::vector<qtransform> const &transforms)
+{
+    j = nlohmann::json::array();
+    for (int i = 0; i < transforms.size(); ++i)
+        to_json(j[i], transforms[i]);
+}
+
+inline void from_json(json const &j, std::vector<qtransform> &transforms)
+{
+    transforms.resize(j.size());
+    for (int i = 0; i < j.size(); ++i)
     {
-        j = json {
-            { "gestation", t.gestation }
-        };
-
-        to_json(j["color"], t.colorTransform);
-
-        if (!t.transformMatrixKey.empty())
-            j["transformKey"] = t.transformMatrixKey;
-
-        to_json(j["transform"], t.transformMatrix);
+        from_json(j[i], transforms[i]);
+        // add unique names if they're undefined
+        if (transforms[i].transformMatrixKey.empty())
+        {
+            transforms[i].transformMatrixKey = string("T") + std::to_string(i);
+        }
     }
-
-    inline void to_json(json &j, std::vector<qtransform> const &transforms)
-    {
-        j = nlohmann::json::array();
-        for (int i = 0; i < transforms.size(); ++i)
-            to_json(j[i], transforms[i]);
-    }
-
-    inline void from_json(json const &j, qtransform &t)
-    {
-        t.gestation = j.at("gestation");
-        from_json(j.at("color"),     t.colorTransform);
-        from_json(j.at("transform"), t.transformMatrix);
-    }
-
-    inline void from_json(json const &j, std::vector<qtransform> &transforms)
-    {
-        transforms.resize(j.size());
-        for (int i = 0; i < j.size(); ++i)
-            from_json(j[i], transforms[i]);
-    }
+}
 
 
 class qnode
@@ -163,27 +173,17 @@ class qnode
 public:
     int         id              = 0;
     int         parentId        = 0;
+    string      sourceTransform;
     double      beginTime       = 0.0;
-    int         generation      = 0;
     Matx33      globalTransform;
     cv::Scalar  color = cv::Scalar(1.0, 0.5, 0.0, 1.0);
 
-    qnode(qnode const &node)
-    {
-        id              = node.id;
-        parentId        = node.parentId;
-        beginTime       = node.beginTime;
-        generation      = node.generation;
-        globalTransform = node.globalTransform;
-        color           = node.color;
-    }
 
     qnode(int id_=0, int parentId_=0, double beginTime_ = 0)
     {
         id = id_;
         parentId = parentId_;
         beginTime = beginTime_;
-        generation = 0;
         color = cv::Scalar(1, 1, 1, 1);
         globalTransform = globalTransform.eye();
     }
@@ -224,7 +224,6 @@ protected:
 public:
     // settings
     string name;
-    //double maxRadius = 100.0;
     cv::Rect_<float> domain = cv::Rect_<float>(-100.0, -100.0, 100.0 * 2, 100.0 * 2);
 
     enum class DomainShape {
@@ -248,8 +247,10 @@ public:
     // model
     std::mt19937 prng; //Standard mersenne_twister_engine with default seed
     std::priority_queue<qnode, std::deque<qnode>, qnode::EarliestFirst> nodeQueue;
-
     int nextNodeId = 1;
+
+    // stats
+    std::unordered_map<string, int> transformCounts;
 
 public:
     qtree() {}
@@ -305,7 +306,8 @@ public:
         // (rather than assert/abort with NDEBUG)
 
         name = (j.contains("name") ? j.at("name").get<string>() : "");
-        randomSeed = j.at("randomSeed");
+
+        randomSeed = (j.contains("randomSeed") ? j.at("randomSeed").get<int>() : 0);
 
         if (j.contains("maxRadius"))
         {
@@ -376,6 +378,8 @@ public:
         return qtree::createTreeFromJson(j);
     }
 
+#pragma endregion
+
     virtual void create() = 0;
 
     // process the next node in the queue
@@ -385,7 +389,7 @@ public:
     virtual bool isViable(qnode const & node) const { return true; }
 
     // invoked when a viable node is pulled from the queue. override to update drawing, data structures, etc.
-    virtual void addNode(qnode & node) { }
+    virtual void addNode(qnode & node);
 
     virtual void getNodesIntersecting(cv::Rect2f const &rect, std::vector<qnode> &nodes) const {}
 
@@ -399,6 +403,9 @@ public:
 
     // generate a child node from a parent
     virtual void beget(qnode const & parent, qtransform const & t, qnode & child);
+
+    // fills vector with transform IDs
+    virtual void getLineage(qnode const & node, std::vector<string> & lineage) const { }
 
     // trigger all existing nodes to attempt to re-bud child nodes
     virtual void regrowAll() {}

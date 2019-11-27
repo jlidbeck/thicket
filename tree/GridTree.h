@@ -97,6 +97,8 @@ public:
     // add node to hash, data structures, etc.
     virtual void addNode(qnode &currentNode) override
     {
+        qtree::addNode(currentNode);
+
         // take up space
         auto center = getNodeKey(currentNode);
         m_covered.insert(center);

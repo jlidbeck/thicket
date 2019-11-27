@@ -29,19 +29,27 @@ bool qtree::process()
     {
         qnode child;
         beget(currentNode, t, child);
+        assert(currentNode.id == 0 || currentNode.parentId < currentNode.id);
         nodeQueue.push(child);
     }
 
     return true;
 }
 
-//  Generate a child node from parent
+
+void qtree::addNode(qnode & node)
+{
+    if(!node.sourceTransform.empty())
+        transformCounts[node.sourceTransform]++;
+}
+
+
+//  Generate a potential child node from parent
 void qtree::beget(qnode const & parent, qtransform const & t, qnode & child)
 {
     child.id = nextNodeId++;
     child.parentId = parent.id;
-
-    child.generation = parent.generation + 1;
+    child.sourceTransform = t.transformMatrixKey;
 
     child.beginTime = parent.beginTime + t.gestation + (gestationRandomness>0.0 ? r(gestationRandomness) : 0.0);
 
@@ -49,6 +57,7 @@ void qtree::beget(qnode const & parent, qtransform const & t, qnode & child)
 
     child.color = t.colorTransform.apply(parent.color);
 }
+
 
 //  Node draw function for tree of nodes with all the same polygon
 void qtree::drawNode(qcanvas &canvas, qnode const &node)
