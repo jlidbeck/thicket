@@ -10,6 +10,10 @@
 #include <array>
 #include <list>
 #include <unordered_set>
+#include <filesystem>
+
+
+namespace fs = std::filesystem;
 
 
 using std::cout;
@@ -32,6 +36,8 @@ protected:
     cv::Scalar rootNodeColor = cv::Scalar(0.0, 0.0, 1.0, 1.0);
 
     std::vector<cv::Point2f> drawPolygon;
+
+    fs::path fieldImagePath;
 
     // controls size of intersection field--in pixels per model unit, independent of display resolution.
     int fieldResolution = 40;
@@ -56,15 +62,19 @@ public:
 
     virtual void to_json(json &j) const override
     {
-	    qtree::to_json(j);
+        qtree::to_json(j);
+
+        j["_class"] = "SelfLimitingPolygonTree";
+
+        j["fieldResolution"] = fieldResolution;
+        j["polygonSides"] = polygonSides;
+        j["starAngle"] = starAngle;
 
         if(!drawPolygon.empty())
             ::to_json(j["drawPolygon"], drawPolygon);
 
-        j["_class"] = "SelfLimitingPolygonTree";
-        j["fieldResolution"] = fieldResolution;
-        j["polygonSides"] = polygonSides;
-        j["starAngle"] = starAngle;
+        if (!fieldImagePath.empty())
+            j["fieldImage"] = fieldImagePath.string();
         
         ::to_json(j["rootNode"]["color"], rootNodeColor);
     }
@@ -76,6 +86,9 @@ public:
         drawPolygon.clear();
         if(j.contains("drawPolygon"))
             ::from_json(j.at("drawPolygon"), drawPolygon);
+
+        if (j.contains("fieldImage"))
+            fieldImagePath = j.at("fieldImage").get<string>();
 
         fieldResolution = j.at("fieldResolution");
         polygonSides = (j.contains("polygonSides") ? j.at("polygonSides").get<int>() : 5);
@@ -101,7 +114,7 @@ public:
             maxRadius = 5.0 + r(40.0);
             domain = cv::Rect_<float>(-maxRadius, -maxRadius, maxRadius * 2, maxRadius * 2);
             polygonSides = (randomize % 6) + 3;
-            starAngle = ((randomize % 12) < 6 ? 36 : 0);
+            starAngle = ((randomize % 12) < 6 ? 60 : 0);
             //gestationRandomness = r(200.0);
         }
 
@@ -191,6 +204,20 @@ public:
         m_field.create(fieldSize);
         m_field = 0;
         m_field.copyTo(m_fieldLayer);
+
+        if (!fieldImagePath.empty())
+        {
+            cv::Mat fieldImage = cv::imread(fieldImagePath.string());
+            cv::cvtColor(fieldImage, fieldImage, cv::ColorConversionCodes::COLOR_BGR2GRAY);
+            cv::resize(fieldImage, m_field, m_field.size(), 0, 0, cv::InterpolationFlags::INTER_NEAREST);
+        }
+
+        //int x = fieldSize.width / 4;
+        //int y = fieldSize.height / 4;
+        //auto white = cv::Scalar(255.0, 255.0, 255.0);
+        //cv::line(m_field, cv::Point(x, fieldSize.height), cv::Point(x, y), white, 1, cv::LineTypes::LINE_8);
+        //cv::line(m_field, cv::Point(2*x, 0), cv::Point(2*x, 3*y), white, 1, cv::LineTypes::LINE_8);
+        //cv::line(m_field, cv::Point(3*x, fieldSize.height), cv::Point(3*x, y), white, 1, cv::LineTypes::LINE_8);
 
         // maps min corner of the bounding rect to (0,0) of the field
         m_fieldTransform = util::transform3x3::getScaleTranslate((double)fieldResolution, (double)-rc.x*fieldResolution, (double)-rc.y*fieldResolution);
@@ -291,6 +318,7 @@ public:
     }
 
     std::list<qnode> m_nodeList;
+    std::unordered_set<int> m_markedForDeletion;
 
     virtual void addNode(qnode &currentNode) override
     {
@@ -414,6 +442,88 @@ public:
 
         return removed;//*/
     }
+
+    //bool isDescendantOf(int child, int ancestor)
+    //{
+    //    auto it = findNode(child);
+    //    while (it!=m_nodeList.end())
+    //    {
+    //        if(it->id==ancestor)
+    //            return true;
+    //        if (it->parentId == it->id)
+    //            return false;
+    //        it = findNode(it->parentId);
+    //    }
+    //    // ??
+    //    return false;
+    //}
+
+    void markDescendantsForDeletion()
+    {
+        std::unordered_set<int> safeList;
+
+        for (auto it = m_nodeList.begin(); it != m_nodeList.end(); ++it)
+        {
+            bool del = false;
+
+            int idx = it->id;
+            while (1)
+            {
+                if (safeList.find(idx) != safeList.end())
+                {
+                    //safe = true;
+                    break;
+                }
+                if (m_markedForDeletion.find(idx) != m_markedForDeletion.end())
+                {
+                    del = true;
+                    break;
+                }
+                auto jt = findNode(idx);
+                if (jt->parentId == idx)
+                    break;
+                idx = jt->parentId;
+            }
+
+            if (del)
+            {
+                auto jt = it;
+                while (1)
+                {
+                    m_markedForDeletion.insert(jt->id);
+                    if (jt->parentId == jt->id)
+                        break;
+                    jt = findNode(jt->parentId);
+                }
+            }
+            else
+            {
+                auto jt = it;
+                while (1)
+                {
+                    safeList.insert(jt->id);
+                    if (jt->parentId == jt->id)
+                        break;
+                    jt = findNode(jt->parentId);
+                }
+            }
+        }
+    }
+
+    //bool isAncestorMarkedForDeletion(int id)
+    //{
+    //    auto it = findNode(id);
+    //    while (it != m_nodeList.end())
+    //    {
+    //        if (m_markedForDeletion.find(it->id) != m_markedForDeletion.end())
+    //            return true;
+    //        if (it->parentId == it->id)
+    //            return false;
+    //        it = findNode(it->parentId);
+    //    }
+    //    // ??
+    //    return false;
+    //}
 
     virtual void regrowAll() override
     {
