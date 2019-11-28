@@ -242,7 +242,7 @@ public:
 
     // draw settings
     cv::Scalar lineColor = cv::Scalar(0);
-    int lineThickness = 1;
+    int lineThickness = 0;
 
     // model
     std::mt19937 prng; //Standard mersenne_twister_engine with default seed

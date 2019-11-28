@@ -137,12 +137,13 @@ public:
             colorTransformPalette.push_back(ColorTransform::hlsSink(r(360.0), lightness, sat, r(0.5)));
             colorTransformPalette.push_back(ColorTransform::hlsSink(r(360.0), lightness, sat, r(0.5)));
             colorTransformPalette.push_back(ColorTransform::hlsSink(r(360.0), lightness, sat, r(0.5)));
-            //colorTransformPalette.push_back(ColorTransform::hlsSink(r(360.0), 0.5 + r(0.5), sat, r(0.5)));
-            //colorTransformPalette.push_back(ColorTransform::hlsTransform(r(2.0) - 1.0, 1.0, 1.0));
-            //colorTransformPalette.push_back(ColorTransform::hlsTransform(r(2.0) - 1.0, 1.0, 1.0));
-            //colorTransformPalette.push_back(ColorTransform::hlsTransform(r(2.0) - 1.0, 1.0, 1.0));
+            colorTransformPalette.push_back(ColorTransform::hlsSink(r(360.0), 0.5 + r(0.5), sat, r(0.5)));
+            colorTransformPalette.push_back(ColorTransform::hueShift(r(2.0) - 1.0));			// slow hueshift
+            colorTransformPalette.push_back(ColorTransform::hueShift(r(2.0) - 1.0));			// slow hueshift
             colorTransformPalette.push_back(ColorTransform::hueShift(r(360.0)));            // wild hueshift
             colorTransformPalette.push_back(ColorTransform::hueShift(r(360.0)));            // wild hueshift
+            colorTransformPalette.push_back(ColorTransform::hlsTransform(std::vector<float>{ 1.0,0.0, -1.0,1.0, 1.0,0.0 }));            // dark/light alternating L=1-L (no effect on fully sat colors)
+            colorTransformPalette.push_back(ColorTransform::hlsTransform(std::vector<float>{ 1.0,0.0, -1.0,0.6, 1.0,0.0 }));            // dark/light alternating 
             //colorTransformPalette.push_back(ColorTransform::hlsTransform(r(360.0), 0.9, 1.0));            // darken
             if (r(2))
             {
