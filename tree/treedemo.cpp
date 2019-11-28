@@ -64,24 +64,29 @@ public:
         {
             if (restart)
             {
-                cout << "Starting run.\n";
-
-                if (!pTree)
+				cout << "--- Starting run --- " << endl;
+				
+				if (!pTree)
                 {
                     pTree = &defaultTree;
+					cout << "--- Set default tree\n";
                 }
 
                 if (randomize)
                 {
                     pTree->setRandomSeed(++presetIndex);
+                    //pTree->name = std::string("R") + std::to_string(presetIndex);
                     randomize = false;
-                }
+					cout << "--- Randomized ["<<presetIndex<<+"]\n";
+				}
                 pTree->create();
                 pTree->transformCounts.clear();
 
-                json settingsJson;
-                pTree->to_json(settingsJson);
-                cout << settingsJson << endl;
+                //json settingsJson;
+                //pTree->to_json(settingsJson);
+                //cout << settingsJson << endl;
+
+				cout << "--- Starting run: " << pTree->name << ": " << pTree->transforms.size() << " transforms" << endl;
 
                 canvas.image = cv::Mat3b(renderSize);
                 canvas.image = 0;
@@ -192,6 +197,9 @@ public:
             pTree = qtree::createTreeFromJson(j);
 
             std::cout << "Settings read from: " << filename << std::endl;
+
+            if (pTree->name.empty())
+                pTree->name = std::to_string(idx);
 
             restart = true;
             randomize = false;
