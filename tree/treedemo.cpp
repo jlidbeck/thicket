@@ -33,6 +33,7 @@ public:
 
     ThornTree defaultTree;
     qtree *pTree = nullptr;
+    qtree *pBreedTree = nullptr;
 
     int minNodesProcessedPerFrame = 1;
     int maxNodesProcessedPerFrame = 64;
@@ -168,7 +169,9 @@ public:
                 showReport();
                 cout << "Run complete.\n";
 
-                cout << "'s' save, 'o','O' open, 'c',' ' restart, '.' step, 'r' randomize, 'l' line color, +/- model radius, ESC to quit.\n";
+                cout << "'s' save, 'o','O' open, 'C',' ' restart, '.'/',' step/continue, 'r' randomize, 'c' color, 'l' line color, \n"
+                    << "domain adjustments: +/-/arrows/0/1,\n"
+                    << "breeding: ctrl-b swap, B stash, b breed, ESC to quit.\n";
                 int key = cv::waitKey(-1);
                 processKey(key);
             }
@@ -528,6 +531,46 @@ public:
             pTree->regrowAll();
             break;
         }
+
+        case 'B':
+        {
+            pBreedTree = pTree->clone();
+            cout << "** tree " << pBreedTree->name << " cloned to breed **\n";
+            break;
+        }
+
+        case 'b':
+        {
+            if (pBreedTree == nullptr)
+            {
+                pBreedTree = pTree->clone();
+                cout << "** tree "<<pBreedTree->name<<" cloned to breed **\n";
+            }
+            else
+            {
+                cout << "** Breeding current " << pTree->name << endl;
+                cout << "** Breeding with " << pBreedTree->name << endl;
+                pTree->combineWith(*pBreedTree, 0.1);
+                cout << "** trees combined: "<<pTree->name<<" **\n";
+                //restart = true;
+            }
+            break;
+        }
+
+		case 2:		// Ctrl+B: swap current with breeding cache
+		{
+			if (pBreedTree != nullptr)
+			{
+				std::swap(pBreedTree, pTree);
+				restart = true;
+				cout << "** Swapped with breeding cache: loaded " << pTree->name << endl;
+			}
+			else
+			{
+				cout << "** Nothing in breeding cache\n";
+			}
+			break;
+		}
 
         case 27:    // ESC
         case 'q':

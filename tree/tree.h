@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <random>
 #include <nlohmann/json.hpp>
+#include <iostream>
 #include <unordered_map>
 
 
@@ -15,6 +16,9 @@ using json = nlohmann::basic_json<>;
 
 namespace fs = std::filesystem;
 
+
+using std::cout;
+using std::endl;
 
 class qcanvas;
 
@@ -432,6 +436,60 @@ public:
     virtual void drawNode(qcanvas &canvas, qnode const &node);
 
     virtual void saveImage(fs::path imagePath) { };
+
+    virtual void combineWith(qtree const &tree, double a)
+    {
+        if (polygon != tree.polygon)
+        {
+            throw(std::exception("Different polygon"));
+        }
+
+		std::cout << "combineWith: " << transforms.size() << " t x " << tree.transforms.size() << " t\n";
+
+		auto unmatchedTransforms = transforms;
+		std::vector<qtransform> newTransforms;
+
+        for (auto const &othert : tree.transforms)
+        {
+            // already has equivalent?
+            bool matched = false;
+            for (auto it = unmatchedTransforms.cbegin(); it!=unmatchedTransforms.end(); ++it)
+            {
+				auto thist = *it;
+                //if (thist.transformMatrixKey == othert.transformMatrixKey)
+                if(util::approximatelyEqual(thist.transformMatrix, othert.transformMatrix))
+                {
+                    thist.gestation = (1.0 - a)*thist.gestation + a * othert.gestation;
+                    thist.colorTransform.linterp(othert.colorTransform, a);
+					newTransforms.push_back(thist);
+					unmatchedTransforms.erase(it);
+                    matched = true;
+                    break;
+                }
+            }
+
+            if (!matched)
+            {
+                // other transform not matched... interpolate as very delayed transform
+				auto tt = othert;
+				tt.gestation = tt.gestation / a;
+                newTransforms.push_back(tt);
+            }
+        }
+
+		for (auto const& ut : unmatchedTransforms)
+		{
+			// other transform not matched... interpolate as very delayed transform
+			auto tt = ut;
+			tt.gestation = tt.gestation / a;
+			newTransforms.push_back(tt);
+		}
+
+		cout << "After matching: " << newTransforms.size() << " transforms\n";
+		transforms = newTransforms;
+
+		name = std::string("[") + name + "+" + tree.name + "," + std::to_string(a) + "]";
+    }
 
     // util
     
