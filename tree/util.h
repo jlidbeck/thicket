@@ -324,10 +324,10 @@ namespace util
 
 #pragma endregion
 
-    template<class _T>
-    void clear(_T &container)
+    template<class _Class>
+    void clear(_Class &container)
     {
-        container = _T();
+        container = _Class();
     }
 
     namespace polygon

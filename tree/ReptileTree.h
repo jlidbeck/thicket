@@ -16,7 +16,7 @@ using std::endl;
 
 //  (1/2)^(1/n)
 //  growth factor with a halflife of {n}
-float halfRoot(int n)
+inline float halfRoot(int n)
 {
     return pow(0.5f, 1.0f / (float)n);
 }

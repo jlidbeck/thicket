@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <vector>
 #include <chrono>
+#include <conio.h>
 
 
 namespace fs = std::filesystem;
@@ -138,6 +139,7 @@ public:
 
                 // update display
                 imshow("Memtest", canvas.image); // Show our image inside it.
+                key = cv::waitKey(1);   // allows redraw
 
                 totalNodesProcessed += nodesProcessed;
 
@@ -150,12 +152,16 @@ public:
 
                 if (stepping) 
                 {
-                    key = cv::waitKey(0);
+                    //key = cv::waitKey(0);
+                    key = ::_getch();
                     break;
                 }
 
-                key = cv::waitKey(1);
-                if (key > 0) break;
+                if (::_kbhit())
+                {
+                    key = ::_getch();
+                    break;
+                }
             }   // while(no key pressed and not complete)
 
             processKey(key);
@@ -169,10 +175,10 @@ public:
                 showReport();
                 cout << "Run complete.\n";
 
-                cout << "'s' save, 'o','O' open, 'C',' ' restart, '.'/',' step/continue, 'r' randomize, 'c' color, 'l' line color, \n"
-                    << "domain adjustments: +/-/arrows/0/1,\n"
-                    << "breeding: ctrl-b swap, B stash, b breed, ESC to quit.\n";
-                int key = cv::waitKey(-1);
+                cout << "| 'q' quit, 's' save, 'o',PgUp,PgDn open, 'C',' ' restart, '.'/',' step/continue, 'r' randomize, 'c' color, 'l' line color, 'p' polygon,\n"
+                     << "| domain adjustments: +/-/arrows/0/1/2, 't' transforms,\n"
+                     << "| breeding: ctrl-b swap, B stash, b breed, ESC to quit.\n";
+                int key = ::_getch();
                 processKey(key);
             }
 
@@ -199,7 +205,7 @@ public:
             infile >> j;
             pTree = qtree::createTreeFromJson(j);
 
-            std::cout << "Settings read from: " << filename << std::endl;
+            cout << "Settings read from: " << filename << endl;
 
             if (pTree->name.empty())
                 pTree->name = std::to_string(idx);
@@ -209,7 +215,7 @@ public:
         }
         catch (std::exception &ex)
         {
-            std::cout << "Failed to open " << filename << ":\n" << ex.what() << endl;
+            cout << "Failed to open " << filename << ":\n" << ex.what() << endl;
         }
     }
 
@@ -278,6 +284,8 @@ public:
         {
             findNextUnusedFileIndex();
 
+            cout << "Saving image and settings: " << currentFileIndex << endl;
+
             fs::path imagePath;
             char filename[24];
             sprintf_s(filename, "tree%04d.png", currentFileIndex);
@@ -300,7 +308,7 @@ public:
             pTree->to_json(j);
             outfile << std::setw(4) << j;
 
-            std::cout << "Image saved: " << imagePath << std::endl;
+            cout << "Image saved: " << imagePath << endl;
 
             return;
         }
@@ -323,23 +331,25 @@ public:
             break;
         }
 
-		case 'h':
-			renderSize = (renderSize == renderSizePreview ? renderSizeHD : renderSizePreview);
-			restart = true;
-			break;
-
         case 'O':
         case 0x210000:      // PageUp
+        case 73:
             findPreviousFile();
             openFile(currentFileIndex);
             break;
 
         case 0x220000:      // PageDown
+        case 81:
         {
             findNextFile();
             openFile(currentFileIndex);
             break;
         }
+
+        case 'h':           // HD/preview toggle
+            renderSize = (renderSize == renderSizePreview ? renderSizeHD : renderSizePreview);
+            restart = true;
+            break;
 
         case 'C':
         {
@@ -403,21 +413,25 @@ public:
             break;
                 
         case 0x250000:  // left
+        case 75:
             pTree->domain.x += 0.10f * std::min( pTree->domain.width, pTree->domain.height);
             restart = true;
             break;
 
         case 0x260000:  // up
+        case 72:
             pTree->domain.y -= 0.10f * std::min( pTree->domain.width, pTree->domain.height);
             restart = true;
             break;
 
         case 0x270000:  // right
+        case 77:
             pTree->domain.x -= 0.10f * std::min( pTree->domain.width, pTree->domain.height);
             restart = true;
             break;
 
         case 0x280000:  // down
+        case 80:
             pTree->domain.y += 0.10f * std::min( pTree->domain.width, pTree->domain.height);
             restart = true;
             break;
@@ -475,12 +489,25 @@ public:
         }
 
         case 't':
+        {
+            // sort in order of gestation, increasing
+            std::vector<int> indexes(pTree->transforms.size());
+            std::iota(indexes.begin(), indexes.end(), 0);
+            std::sort(indexes.begin(), indexes.end(), [&](int a, int b) { return pTree->transforms[a].gestation < pTree->transforms[b].gestation; });
+
             cout << "=== " << pTree->name << " transforms: " << endl;
-            for (auto const &t : pTree->transforms)
+            cout << "idx freq gest  key      color\n";
+            for (auto i : indexes)
             {
-                cout << std::setw(5) << pTree->transformCounts[t.transformMatrixKey] << "   " << t.transformMatrixKey << "   " << t.colorTransform.description() << endl;
+                auto const &t = pTree->transforms[i];
+                cout << std::setw(2) << i
+                     << ":" << std::setw(5) << pTree->transformCounts[t.transformMatrixKey] 
+                     << " " << std::setw(4) << std::setprecision(3) << t.gestation
+                     << "  " << t.transformMatrixKey 
+                     << "  " << t.colorTransform.description() << endl;
             }
             break;
+        }
 
         case 'T':
         {
@@ -493,6 +520,24 @@ public:
             break;
         }
 
+        case 20:    // Ctrl-T
+        {
+            // remove unexpressed genes
+            int count = pTree->transforms.size();
+            for (auto it = pTree->transforms.begin(); it != pTree->transforms.end(); )
+            {
+                if (pTree->transformCounts[it->transformMatrixKey] == 0)
+                {
+                    it = pTree->transforms.erase(it);
+                }
+                else
+                {
+                    ++it;
+                }
+            }
+            cout << "=== " << (count - pTree->transforms.size()) << " transforms removed.\n";
+            break;
+        }
 
         case 'x':
         //{
@@ -588,7 +633,7 @@ public:
         loadedImage = cv::imread(imagePath.string(), cv::ImreadModes::IMREAD_COLOR); // Read the file
         if (!loadedImage.data) // Check for invalid input
         {
-            std::cout << "Could not open or find the image " << imagePath << std::endl;
+            cout << "Could not open or find the image " << imagePath << endl;
             return -1;
         }
 
@@ -638,7 +683,7 @@ int main(int argc, char** argv)
 {
     if (argc != 2)
     {
-        std::cout << " Usage: display_image ImageToLoadAndDisplay" << std::endl;
+        cout << " Usage: display_image ImageToLoadAndDisplay" << endl;
         return -1;
     }
 
