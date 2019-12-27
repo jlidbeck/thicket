@@ -218,7 +218,7 @@ public:
 //  It creates a global function pointer (which is never used)
 //  and registers a constructor lambda for the given qtree-derived class
 #define REGISTER_QTREE_TYPE(TYPE) \
-    auto g_constructor_ ## TYPE = qtree::registerConstructor(#TYPE, [](){ return new TYPE(); });
+    auto const g_constructor_ ## TYPE = qtree::registerConstructor(#TYPE, [](){ return new TYPE(); });
 
 class qtree
 {
@@ -346,7 +346,7 @@ public:
     }
 
     //  Registers a typed constructor lambda fn
-    static auto registerConstructor(string className, std::function<qtree*()> fn)
+    static auto registerConstructor(string className, std::function<qtree*()> const &fn)
     {
         factoryTable[className] = fn;
         return fn;

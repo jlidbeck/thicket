@@ -181,6 +181,7 @@
     <ClInclude Include="SelfLimitingPolygonTree.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="tree.h" />
+    <ClInclude Include="treedemo.h" />
     <ClInclude Include="util.h" />
   </ItemGroup>
   <ItemGroup>
