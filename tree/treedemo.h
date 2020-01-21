@@ -4,14 +4,15 @@
 #include "GridTree.h"
 #include "ReptileTree.h"
 #include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <iostream>
 #include <fstream>
 #include <filesystem>
 #include <vector>
 #include <chrono>
-#include <conio.h>
+#include <future>
+#include <mutex>
+#include <condition_variable>
 
 
 namespace fs = std::filesystem;
@@ -19,6 +20,8 @@ namespace fs = std::filesystem;
 
 class TreeDemo
 {
+    mutable std::mutex demo_mutex;
+
 public:
     cv::Mat loadedImage;
     qcanvas canvas;
@@ -53,18 +56,28 @@ public:
     // current file pointer. should usually point to existing file "tree%04d"
     int currentFileIndex = -1;
 
+private:
+    std::future<void> s_run;
+    bool s_cancel = false;
+
+    void processCommands();
+
+    void endWorkerTask();
+    void startWorkerTask();
+
+    void sendProgressUpdate();
 
 public:
-    // console-driven run loop
-    void consoleRun();
-    void consoleStep();
+    bool isWorkerTaskRunning() const;
+
+    std::condition_variable cv;
+    std::function<int(int, int)> m_progressCallback;
 
     bool beginStepMode();
     bool endStepMode();
 
     void restart(bool randomize=false);
 
-    void processCommands();
     int processNodes();
 
     bool processKey(int key);

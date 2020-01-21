@@ -9,63 +9,72 @@ using std::cin;
 using std::endl;
 
 
-void TreeDemo::consoleRun()
+bool TreeDemo::isWorkerTaskRunning() const 
+{ 
+    std::unique_lock<std::mutex> lock(demo_mutex);
+
+    return (s_run.valid() && !s_run._Is_ready());
+}
+
+void TreeDemo::endWorkerTask()
 {
-    processCommands();
+    //std::unique_lock<std::mutex> lock(demo_mutex);
 
-    while (!m_quit)
+    if (s_run.valid())
     {
-        consoleStep();
+        printf("### Waiting for worker task ###\n");
 
-        if (pTree->nodeQueue.empty())
-        {
-            showReport(0.0);
-            cout << "Run complete.\n";
+        s_cancel = true;
 
-            showCommands();
-            //int key = cv::waitKey(-1);
-            int key = ::_getch();
-            if (key == 0 || key == 0xE0)    // arrow, function keys sent as 2 sequential codes
-                key = ::_getch();
-            processKey(key);
-        }
+        s_run.wait();
+        std::future<void> invalid;
+        std::swap(s_run, invalid);
 
+        s_cancel = false;
     }
 }
 
-void TreeDemo::consoleStep()
+
+void TreeDemo::startWorkerTask()
 {
-    int key = -1;
+    //std::unique_lock<std::mutex> lock(demo_mutex);
 
-    while (!pTree->nodeQueue.empty())
+    if (isWorkerTaskRunning())
     {
-        if (!m_stepping)
+        // already running
+        return;
+    }
+
+    printf("### Starting worker task ###\n");
+
+    s_run = std::async(std::launch::async, [&] {
+
+        while (!pTree->nodeQueue.empty())
         {
+            if (s_cancel)
+                return;
+
             int nodesProcessed = processNodes();
-        }
 
-        // update display
-        imshow("Memtest", canvas.image); // Show our image inside it.
-        key = cv::waitKey(1);   // allows redraw
+            // update display
+            sendProgressUpdate();
 
-        showReport(1.0);
+            if (m_stepping) 
+                break;
 
-        if (m_stepping || ::_kbhit())
-        {
-            key = ::_getch();
-            if (key == 0 || key == 0xE0)    // arrow, function keys sent as 2 sequential codes
-                key = ::_getch();
+        }   // while(no key pressed and not complete)
 
-            break;
-        }
-    }   // while(no key pressed and not complete)
+        sendProgressUpdate();
+    });
 
-    processKey(key);
 }
+
 
 // sets stepping mode and performs one step
 bool TreeDemo::beginStepMode()
 {
+    endWorkerTask();
+
     m_stepping = true;
     maxNodesProcessedPerFrame = 1;
 
@@ -84,7 +93,23 @@ bool TreeDemo::endStepMode()
     if (pTree->nodeQueue.empty())
         restart();
 
+    // is worker thread complete? if so, kick it off
+    startWorkerTask();
+
     return true;
+}
+
+void TreeDemo::sendProgressUpdate()
+{
+    if (!!m_progressCallback)
+    {
+        //std::unique_lock<std::mutex> lock(demo_mutex);
+        m_quit |= m_progressCallback(1, totalNodesProcessed);
+    }
+    else
+    {
+        showReport(1.0);
+    }
 }
 
 int TreeDemo::processNodes()
@@ -96,6 +121,8 @@ int TreeDemo::processNodes()
         && (nodesProcessed < minNodesProcessedPerFrame || pTree->nodeQueue.top().beginTime <= modelTime)
         )
     {
+        //std::unique_lock<std::mutex> lock(demo_mutex);
+
         auto currentNode = pTree->nodeQueue.top();
         if (!pTree->isViable(currentNode))
         {
@@ -112,8 +139,11 @@ int TreeDemo::processNodes()
 
     totalNodesProcessed += nodesProcessed;
 
+    sendProgressUpdate();
+
     return nodesProcessed;
 }
+
 
 void TreeDemo::restart(bool randomize)
 {
@@ -124,8 +154,12 @@ void TreeDemo::restart(bool randomize)
 
 void TreeDemo::processCommands()
 {
+    //std::unique_lock<std::mutex> lock(demo_mutex);
+
     if (m_restart)
     {
+        endWorkerTask();
+
         cout << "--- Starting run --- " << endl;
 
         if (!pTree)
@@ -154,8 +188,6 @@ void TreeDemo::processCommands()
         canvas.image = 0;
         canvas.setScaleToFit(pTree->getBoundingRect(), imagePadding);
 
-        // update display
-        imshow("Memtest", canvas.image); // Show our image inside it.
 
         startTime = std::chrono::steady_clock::now();
         lastReportTime = 0;
@@ -164,6 +196,13 @@ void TreeDemo::processCommands()
         totalNodesProcessed = 0;
 
         m_restart = false;
+
+        sendProgressUpdate();
+    }
+
+    if (!m_stepping)
+    {
+        startWorkerTask();
     }
 }
 
@@ -296,6 +335,7 @@ bool TreeDemo::processKey(int key)
 
     case 27:    // ESC
     case 'q':
+        endWorkerTask();
         m_quit = true;
         return true;
 
@@ -484,6 +524,7 @@ bool TreeDemo::processKey(int key)
     case ' ':
     {
         endStepMode();
+        restart();
         return true;
     }
 
@@ -617,7 +658,7 @@ bool TreeDemo::processKey(int key)
 	}
 
     default:
-        cout << "? " << key << endl;
+        printf("? %d %x\n", key, key);
     }
 
     return false;
@@ -625,6 +666,8 @@ bool TreeDemo::processKey(int key)
 
 int TreeDemo::save()
 {
+    std::unique_lock<std::mutex> lock(demo_mutex);
+
     findNextUnusedFileIndex();
 
     cout << "Saving image and settings: " << currentFileIndex << endl;
@@ -693,71 +736,5 @@ int TreeDemo::load(fs::path imagePath)
     return 0;
 }
 
-TreeDemo the;
 
 
-#pragma region OpenCV HighGUI callbacks
-
-static void onMouse(int event, int x, int y, int, void*)
-{
-    if (event != cv::MouseEventTypes::EVENT_LBUTTONDOWN)
-        return;
-
-    cv::Point seed = cv::Point(x, y);
-    auto pt = the.canvas.canvasToModel(seed);
-    std::vector<qnode> nodes;
-
-    // display info on node
-    the.pTree->getNodesIntersecting(cv::Rect2f(pt, cv::Size2f(0,0)), nodes);
-    for (auto& node : nodes)
-    {
-        vector<string> lineage;
-        the.pTree->getLineage(node, lineage);
-        cout << "Node[" << node.id << "]:";
-        for (auto& tname : lineage)
-            cout << " " << tname;
-        cout << endl;
-    }
-    return;
-
-    // delete block
-    the.pTree->getNodesIntersecting(cv::Rect2f(pt, cv::Size2f(11, 8)), nodes);
-    for (auto &node : nodes)
-    {
-        the.pTree->removeNode(node.id);
-    }
-    the.pTree->redrawAll(the.canvas);
-    cv::imshow("Memtest", the.canvas.image); // Show our image inside it.
-}
-
-#pragma endregion
-
-
-//  Main console program loop
-
-int main(int argc, char** argv)
-{
-    if (argc != 2)
-    {
-        cout << " Usage: display_image ImageToLoadAndDisplay" << endl;
-        return -1;
-    }
-
-
-    cv::namedWindow("Memtest", cv::WindowFlags::WINDOW_AUTOSIZE); // Create a window for display.
-
-    cv::setMouseCallback("Memtest", onMouse, 0);
-
-
-    //try {
-        //the.load(argv[1]);
-    the.consoleRun();
-    //}
-    //catch (cv::Exception ex)
-    //{
-    //    cerr << "cv exception: " << ex.what();
-    //    return -1;
-    //}
-
-    return 0;
-}
