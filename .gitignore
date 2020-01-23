@@ -7,4 +7,6 @@ tree/Debug/
 Debug/
 Release/
 *.user
-tree/demo/
+*.aps
+tree/demo.backup/
+demo/
