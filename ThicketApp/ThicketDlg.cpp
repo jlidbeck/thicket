@@ -66,6 +66,7 @@ void CThicketDlg::DoDataExchange(CDataExchange* pDX)
 	CDialogEx::DoDataExchange(pDX);
 
 	DDX_Control(pDX, IDC_TRANSFORMS, m_transformsList);
+	DDX_Control(pDX, IDC_IMAGE, m_matView);
 
 	if (pDX->m_bSaveAndValidate)
 	{
@@ -211,6 +212,8 @@ LRESULT CThicketDlg::OnRunProgress(WPARAM w, LPARAM l)
 		if (demo.m_stepping) str += " step";
 		if (demo.isWorkerTaskRunning()) str += " RUNNING";
 		SetDlgItemText(IDC_STATUS, str);
+
+		m_matView.SetImage(demo.canvas.image);
 	}
 	else
 	{

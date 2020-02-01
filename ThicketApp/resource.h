@@ -16,6 +16,7 @@
 #define IDC_STATUS                      1004
 #define IDC_STATUS2                     1005
 #define IDC_CORNERGRIP                  1006
+#define IDC_IMAGE                       1007
 #define ID_FILE_OPENPREVIOUS            32772
 #define ID_FILE_EXIT                    32773
 
@@ -25,7 +26,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        131
 #define _APS_NEXT_COMMAND_VALUE         32774
-#define _APS_NEXT_CONTROL_VALUE         1007
+#define _APS_NEXT_CONTROL_VALUE         1008
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

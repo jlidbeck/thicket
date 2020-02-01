@@ -6,6 +6,8 @@
 
 
 #include <mutex>
+#include <opencv2/opencv.hpp>
+#include "MatView.h"
 
 
 // CThicketDlg dialog
@@ -37,6 +39,8 @@ protected:
 	CListCtrl m_transformsList;
 	std::vector<int> m_sortOrder;
 	int m_sortColumn = 1;
+
+	CMatView m_matView;
 
 	afx_msg LRESULT OnRunProgress(WPARAM, LPARAM);
 
