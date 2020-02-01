@@ -45,18 +45,17 @@ protected:
 	afx_msg LRESULT OnRunProgress(WPARAM, LPARAM);
 
 	// Generated message map functions
+	DECLARE_MESSAGE_MAP()
 	virtual BOOL OnInitDialog();
+    afx_msg void OnDestroy();
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 	afx_msg void OnFileOpenPrevious();
 	afx_msg void OnFileSave();
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
-	DECLARE_MESSAGE_MAP()
-    afx_msg void OnDestroy();
+	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg void OnGetMinMaxInfo(MINMAXINFO* lpMMI);
 	afx_msg BOOL PreTranslateMessage(MSG *pMsg);
-	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
-	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg void OnBnClickedRandomize();
 	afx_msg void OnBnClickedStep();
 	afx_msg void OnBnClickedStart();
@@ -64,6 +63,6 @@ protected:
     afx_msg void OnLvnItemchangedTransforms(NMHDR *pNMHDR, LRESULT *pResult);
     afx_msg void OnNMCustomdrawTransforms(NMHDR *pNMHDR, LRESULT *pResult);
     afx_msg void OnNMClickTransforms(NMHDR *pNMHDR, LRESULT *pResult);
-    afx_msg void OnStnClickedStatus();
 	afx_msg void OnLvnColumnclickTransforms(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void OnStnClickedImage();
 };

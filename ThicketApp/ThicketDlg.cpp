@@ -8,7 +8,6 @@
 #include "ThicketDlg.h"
 #include "afxdialogex.h"
 #include <future>
-#include <opencv2/highgui/highgui.hpp>
 
 
 #ifdef _DEBUG
@@ -107,6 +106,7 @@ BEGIN_MESSAGE_MAP(CThicketDlg, CDialogEx)
 	ON_NOTIFY(NM_CLICK, IDC_TRANSFORMS, &CThicketDlg::OnNMClickTransforms)
 	ON_NOTIFY(LVN_COLUMNCLICK, IDC_TRANSFORMS, &CThicketDlg::OnLvnColumnclickTransforms)
 	ON_MESSAGE(WM_RUN_PROGRESS, &CThicketDlg::OnRunProgress)
+	ON_STN_CLICKED(IDC_IMAGE, &CThicketDlg::OnStnClickedImage)
 END_MESSAGE_MAP()
 
 
@@ -175,59 +175,11 @@ void CThicketDlg::OnSize(UINT nType, int cx, int cy)
 	CDialogEx::OnSize(nType, cx, cy);
 }
 
-
-void CThicketDlg::OnDestroy()
+void CThicketDlg::OnGetMinMaxInfo(MINMAXINFO* lpMMI)
 {
-	CDialogEx::OnDestroy();
+	lpMMI->ptMinTrackSize = m_minDialogSize;
 
-	// TODO: Add your message handler code here
-}
-
-
-
-LRESULT CThicketDlg::OnRunProgress(WPARAM w, LPARAM l)
-{
-	std::lock_guard lock(demo_mutex);
-
-	// update view
-
-	//SetDlgItemText(IDC_STATUS, demo.pTree == nullptr ? L"Nothing" : demo.pTree->nodeQueue.empty() 
-	//	? L"Complete" 
-	//	: L"x");
-
-	if (demo.pTree != nullptr)
-	{
-		CString name(demo.pTree->name.c_str());
-		SetWindowText(name);
-
-		m_sortOrder.resize(demo.pTree->transforms.size());
-		std::iota(m_sortOrder.begin(), m_sortOrder.end(), 0);
-		m_sortColumn = -1;
-		m_transformsList.SetItemCount(demo.pTree->transforms.size());
-
-		CString str;
-		str.Format(L"Q:%zu", demo.pTree->nodeQueue.size());
-		if (demo.m_randomize) str += " randomize";
-		if (demo.m_restart) str += " restart";
-		if (demo.m_stepping) str += " step";
-		if (demo.isWorkerTaskRunning()) str += " RUNNING";
-		SetDlgItemText(IDC_STATUS, str);
-
-		m_matView.SetImage(demo.canvas.image);
-	}
-	else
-	{
-		SetDlgItemText(IDC_STATUS, L"Nothing");
-	}
-	UpdateWindow();
-
-	if (!demo.canvas.image.empty())
-	{
-		cv::imshow("Memtest", demo.canvas.image);
-		auto key = cv::waitKey(1);   // allows redraw
-	}
-
-	return 0;
+	CDialog::OnGetMinMaxInfo(lpMMI);
 }
 
 
@@ -261,14 +213,14 @@ BOOL CThicketDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
 	m_transformsList.SetExtendedStyle(m_transformsList.GetExtendedStyle() | LVS_EX_FULLROWSELECT | LVS_EX_CHECKBOXES);
-	m_transformsList.InsertColumn(0, L"",      LVCFMT_LEFT,  60);
-	m_transformsList.InsertColumn(1, L"freq",  LVCFMT_RIGHT, 60);
-	m_transformsList.InsertColumn(2, L"gest",  LVCFMT_LEFT, 100);
-	m_transformsList.InsertColumn(3, L"key",   LVCFMT_LEFT, 100);
+	m_transformsList.InsertColumn(0, L"", LVCFMT_LEFT, 60);
+	m_transformsList.InsertColumn(1, L"freq", LVCFMT_RIGHT, 60);
+	m_transformsList.InsertColumn(2, L"gest", LVCFMT_RIGHT, 100);
+	m_transformsList.InsertColumn(3, L"key", LVCFMT_LEFT, 100);
 	m_transformsList.InsertColumn(4, L"color", LVCFMT_LEFT | LVCFMT_FILL, 100);
 
-	demo.m_progressCallback = [&](int w, int l) { 
-		::PostMessage(m_hWnd, WM_RUN_PROGRESS, w, l); 
+	demo.m_progressCallback = [&](int w, int l) {
+		::PostMessage(m_hWnd, WM_RUN_PROGRESS, w, l);
 		return 0; };
 
 	CRect rc;
@@ -279,26 +231,14 @@ BOOL CThicketDlg::OnInitDialog()
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
 
-void CThicketDlg::OnGetMinMaxInfo(MINMAXINFO* lpMMI)
-{
-	lpMMI->ptMinTrackSize = m_minDialogSize;
 
-	CDialog::OnGetMinMaxInfo(lpMMI);
+void CThicketDlg::OnDestroy()
+{
+	CDialogEx::OnDestroy();
+
+	// TODO: Add your message handler code here
 }
 
-
-void CThicketDlg::OnStnClickedStatus()
-{
-	//if (demo.pTree == nullptr)
-	//{
-	//	OnFileOpenPrevious();
-	//}
-	//else
-	//{
-	//	demo.processCommands();
-	//	UpdateData(0);
-	//}
-}
 
 void CThicketDlg::OnFileOpenPrevious()
 {
@@ -346,7 +286,7 @@ BOOL CThicketDlg::PreTranslateMessage(MSG *pMsg)
 		if (processed)
 		{
 			Invalidate();
-			UpdateWindow();
+			//UpdateWindow();
 
 			if (demo.m_quit)
 			{
@@ -369,11 +309,39 @@ BOOL CThicketDlg::PreTranslateMessage(MSG *pMsg)
 }
 
 
-void CThicketDlg::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
+LRESULT CThicketDlg::OnRunProgress(WPARAM w, LPARAM l)
 {
-	//demo.processKey(nChar);
+	std::lock_guard lock(demo_mutex);
 
-	CDialogEx::OnKeyDown(nChar, nRepCnt, nFlags);
+	// update view
+
+	if (demo.pTree != nullptr)
+	{
+		CString name(demo.pTree->name.c_str());
+		SetWindowText(name);
+
+		m_sortOrder.resize(demo.pTree->transforms.size());
+		std::iota(m_sortOrder.begin(), m_sortOrder.end(), 0);
+		m_sortColumn = -1;
+		m_transformsList.SetItemCount(demo.pTree->transforms.size());
+
+		CString str;
+		str.Format(L"Q:%zu", demo.pTree->nodeQueue.size());
+		if (demo.m_randomize) str += " randomize";
+		if (demo.m_restart) str += " restart";
+		if (demo.m_stepping) str += " step";
+		if (demo.isWorkerTaskRunning()) str += " RUNNING";
+		SetDlgItemText(IDC_STATUS, str);
+
+		m_matView.SetImage(demo.canvas.image);
+	}
+	else
+	{
+		SetDlgItemText(IDC_STATUS, L"Nothing");
+	}
+	//UpdateWindow();
+
+	return 0;
 }
 
 
@@ -644,3 +612,9 @@ void CThicketDlg::OnLvnColumnclickTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 
 
 #pragma endregion
+
+void CThicketDlg::OnStnClickedImage()
+{
+	// TODO: Add your control notification handler code here
+}
+
