@@ -16,7 +16,7 @@
 #endif
 
 
-// CAboutDlg dialog used for App About
+#pragma region CAboutDlg dialog used for App About
 
 class CAboutDlg : public CDialogEx
 {
@@ -47,6 +47,8 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
 END_MESSAGE_MAP()
+
+#pragma endregion
 
 
 // CThicketDlg dialog
@@ -95,7 +97,6 @@ BEGIN_MESSAGE_MAP(CThicketDlg, CDialogEx)
 	ON_WM_DESTROY()
 	ON_WM_KEYDOWN()
 	ON_WM_CHAR()
-	ON_STN_CLICKED(IDC_STATUS, &CThicketDlg::OnStnClickedStatus)
 	ON_BN_CLICKED(IDC_RANDOMIZE, &CThicketDlg::OnBnClickedRandomize)
 	ON_BN_CLICKED(IDC_STEP, &CThicketDlg::OnBnClickedStep)
 	ON_BN_CLICKED(IDC_START, &CThicketDlg::OnBnClickedStart)
@@ -182,18 +183,11 @@ void CThicketDlg::OnDestroy()
 }
 
 
-HWND g_hwnd = NULL;
-CWnd* g_pWnd = nullptr;
-
-int ProgressCallback(int w, int l)
-{
-	::PostMessage(g_hwnd, WM_RUN_PROGRESS, w, l);
-
-	return 0;
-}
 
 LRESULT CThicketDlg::OnRunProgress(WPARAM w, LPARAM l)
 {
+	std::lock_guard lock(demo_mutex);
+
 	// update view
 
 	//SetDlgItemText(IDC_STATUS, demo.pTree == nullptr ? L"Nothing" : demo.pTree->nodeQueue.empty() 
@@ -264,15 +258,15 @@ BOOL CThicketDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
 	m_transformsList.SetExtendedStyle(m_transformsList.GetExtendedStyle() | LVS_EX_FULLROWSELECT | LVS_EX_CHECKBOXES);
-	m_transformsList.InsertColumn(0, L"",  LVCFMT_LEFT, 40);
-	m_transformsList.InsertColumn(1, L"freq", LVCFMT_RIGHT, 40);
-	m_transformsList.InsertColumn(2, L"gest", LVCFMT_LEFT, 60);
-	m_transformsList.InsertColumn(3, L"key", LVCFMT_LEFT, 60);
-	m_transformsList.InsertColumn(4, L"color", LVCFMT_LEFT, 60);
+	m_transformsList.InsertColumn(0, L"",      LVCFMT_LEFT,  60);
+	m_transformsList.InsertColumn(1, L"freq",  LVCFMT_RIGHT, 60);
+	m_transformsList.InsertColumn(2, L"gest",  LVCFMT_LEFT, 100);
+	m_transformsList.InsertColumn(3, L"key",   LVCFMT_LEFT, 100);
+	m_transformsList.InsertColumn(4, L"color", LVCFMT_LEFT | LVCFMT_FILL, 100);
 
-	g_hwnd = *this;
-	g_pWnd = this;
-	demo.m_progressCallback = [&](int w, int l) { ::PostMessage(g_hwnd, WM_RUN_PROGRESS, w, l); return 0; };// &ProgressCallback;
+	demo.m_progressCallback = [&](int w, int l) { 
+		::PostMessage(m_hWnd, WM_RUN_PROGRESS, w, l); 
+		return 0; };
 
 	CRect rc;
 	GetWindowRect(&rc);
@@ -329,6 +323,8 @@ BOOL CThicketDlg::PreTranslateMessage(MSG *pMsg)
 			Invalidate();
 			return true;
 		}
+
+		std::lock_guard lock(demo_mutex);
 
 		bool processed = false;
 		{
@@ -408,6 +404,8 @@ void CThicketDlg::OnBnClickedStart()
 
 void CThicketDlg::OnLvnGetdispinfoTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 {
+	std::lock_guard lock(demo_mutex);
+
 	NMLVDISPINFO* pDispInfo = reinterpret_cast<NMLVDISPINFO*>(pNMHDR);
 	LV_ITEM* pItem = &pDispInfo->item;
 
@@ -457,12 +455,18 @@ void CThicketDlg::OnLvnGetdispinfoTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 
 	if (pItem->mask & LVIF_IMAGE)
 	{
-		//To enable check box, we have to enable state mask...
-		pItem->mask |= LVIF_STATE;
-		pItem->stateMask = LVIS_STATEIMAGEMASK;
-		auto const& t = demo.pTree->transforms[pItem->iItem];
-		// 0=no checkbox, 1=unchecked, 2=checked
-		pItem->state = INDEXTOSTATEIMAGEMASK(1 ? (t.gestation>0 ? 2 : 1) : 0);
+		if (pItem->iItem < 0 || pItem->iItem >= demo.pTree->transforms.size())
+		{
+		}
+		else
+		{
+			//To enable check box, we have to enable state mask...
+			pItem->mask |= LVIF_STATE;
+			pItem->stateMask = LVIS_STATEIMAGEMASK;
+			auto const& t = demo.pTree->transforms[pItem->iItem];
+			// 0=no checkbox, 1=unchecked, 2=checked
+			pItem->state = INDEXTOSTATEIMAGEMASK(1 ? (t.gestation > 0 ? 2 : 1) : 0);
+		}
 	}
 
 	*pResult = 0;
@@ -479,6 +483,8 @@ void CThicketDlg::OnLvnItemchangedTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 
 void CThicketDlg::OnNMCustomdrawTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 {
+	std::lock_guard lock(demo_mutex);
+
 	LPNMCUSTOMDRAW pNMCD = reinterpret_cast<LPNMCUSTOMDRAW>(pNMHDR);
 	LPNMLVCUSTOMDRAW  lplvcd = (LPNMLVCUSTOMDRAW)pNMHDR;
 
@@ -591,6 +597,8 @@ void CThicketDlg::OnNMClickTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 
 void CThicketDlg::OnLvnColumnclickTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 {
+	std::lock_guard lock(demo_mutex);
+
 	LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
 
 	if (!demo.pTree) return;

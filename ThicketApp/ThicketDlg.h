@@ -13,7 +13,7 @@ class CThicketDlg : public CDialogEx
 {
 public:
 	TreeDemo demo;
-	std::mutex demo_mutex;
+	std::recursive_mutex demo_mutex;
 
 // Construction
 public:
