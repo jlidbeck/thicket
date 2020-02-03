@@ -9,10 +9,6 @@ using std::cin;
 using std::endl;
 
 
-cv::Size renderSizePreview  = cv::Size(200, 200);
-cv::Size renderSizeHD       = cv::Size(2000, 1500);
-
-
 void TreeDemo::consoleRun()
 {
     processCommands();

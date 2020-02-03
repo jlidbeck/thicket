@@ -8,10 +8,6 @@
 #pragma region qnode tree
 
 
-//  Static instance of constructor fn table used for dynamic instantiation of qtree-derived classes
-std::map<string, std::function<qtree*()> > qtree::factoryTable;
-
-
 //  process one node
 bool qtree::process()
 {

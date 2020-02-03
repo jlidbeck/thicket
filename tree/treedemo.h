@@ -17,17 +17,15 @@
 namespace fs = std::filesystem;
 
 
-extern cv::Size renderSizePreview;
-extern cv::Size renderSizeHD;
-
-
 class TreeDemo
 {
 public:
     cv::Mat loadedImage;
     qcanvas canvas;
 
-    cv::Size renderSize = renderSizePreview;
+    cv::Size renderSizePreview  = cv::Size(200, 200);
+    cv::Size renderSizeHD       = cv::Size(2000, 1500);
+    cv::Size renderSize         = renderSizePreview;
 
     ThornTree defaultTree;
     qtree *pTree = nullptr;

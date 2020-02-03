@@ -222,8 +222,6 @@ public:
 
 class qtree
 {
-protected:
-    static std::map<string, std::function<qtree*()> > factoryTable;
 
 public:
     // settings
@@ -345,10 +343,16 @@ public:
         }
     }
 
+    static std::map<string, std::function<qtree * ()> >& factory()
+    {
+        static std::map<string, std::function<qtree * ()> > factoryTable;
+        return factoryTable;
+    }
+
     //  Registers a typed constructor lambda fn
     static auto registerConstructor(string className, std::function<qtree*()> const &fn)
     {
-        factoryTable[className] = fn;
+        factory()[className] = fn;
         return fn;
     }
 
@@ -363,13 +367,13 @@ public:
         }
 
         string className = j["_class"];
-        if (factoryTable.find(className) == factoryTable.end())
+        if (factory().find(className) == factory().end())
         {
             string msg = string("Class not registered: '") + className + "'";
             throw(std::exception(msg.c_str()));
         }
 
-        auto pfn = factoryTable.at(className);
+        auto pfn = factory().at(className);
         qtree* pPrototype = pfn();
         pPrototype->from_json(j);
         return pPrototype;
