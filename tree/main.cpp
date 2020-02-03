@@ -2,6 +2,12 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <thread>
 #include <conio.h>
+#include "SelfLimitingPolygonTree.h"
+#include "ExactRationalAngleTree.h"
+
+#define WIN32_LEAN_AND_MEAN      // Exclude rarely-used stuff from Windows headers
+#include <windows.h>
+#include <WinUser.h>
 
 
 TreeDemo g_treeDemo;
@@ -46,6 +52,36 @@ static void onMouse(int event, int x, int y, int, void*)
 #pragma endregion
 
 
+//  Process one node (if stepping), or until completion, or a key is pressed
+//void consoleStep()
+//{
+//    int key = -1;
+//
+//    while (!the.m_quit && !the.pTree->nodeQueue.empty())
+//    {
+//        // process 1-64 nodes, uninterrupted
+//        int nodesProcessed = the.processNodes();
+//
+//        // update display
+//        imshow("Memtest", the.canvas.image); // Show our image inside it.
+//        key = cv::waitKey(1);   // allows redraw
+//
+//        the.showReport(1.0);
+//
+//        if (the.m_stepping || ::_kbhit())
+//        {
+//            key = ::_getch();
+//            if (key == 0 || key == 0xE0)    // arrow, function keys sent as 2 sequential codes
+//                key = ::_getch();
+//
+//            the.processKey(key);
+//
+//            break;
+//        }
+//    }   // while(no key pressed and not complete)
+//
+//}
+
 void redrawCallback()
 {
     imshow("Memtest", g_treeDemo.canvas.getImage()); // Show our image inside it.
@@ -53,13 +89,46 @@ void redrawCallback()
 }
 
 
+//  Unsure how to interpret the param values...
+LRESULT CALLBACK KeyboardProc(
+    _In_ int    code,
+    _In_ WPARAM wParam,
+    _In_ LPARAM lParam
+)
+{
+    if (code < 0)
+    {
+        return ::CallNextHookEx(0, code, wParam, lParam);
+    }
+
+    if (g_treeDemo.processKey(lParam & 0xFFFF))
+    {
+        return 0;
+    }
+
+    printf("KeyboardProc(%d, %d, %x)\n", code, wParam, lParam);
+
+    return ::CallNextHookEx(0, code, wParam, lParam);
+}
+
+
 int main(int argc, char** argv)
 {
-    //if (argc != 2)
-    //{
-    //    cout << "Usage: " << argv[0] << " <Image FIle>" << endl;
-    //    return -1;
-    //}
+    runTests();
+    ExactRationalAngleTree tree6;
+
+    if (argc != 2)
+    {
+        cout << " Usage: display_image ImageToLoadAndDisplay" << endl;
+        return -1;
+    }
+
+    HWND hwnd = ::GetConsoleWindow();
+    HINSTANCE hmod = (HINSTANCE)::GetWindowLong(hwnd, -6);
+    DWORD dwThreadId=0;
+    
+    // not using keyboard hook
+    //::SetWindowsHookEx(WH_KEYBOARD_LL, &KeyboardProc, hmod, dwThreadId);
 
     cv::namedWindow("Memtest", cv::WindowFlags::WINDOW_AUTOSIZE); // Create a window for display.
 
@@ -71,6 +140,7 @@ int main(int argc, char** argv)
     while (!g_treeDemo.isQuitting())
     {
         redrawCallback();
+            //consoleStep();
 
         while (g_treeDemo.isWorkerTaskRunning() && !::_kbhit())
         {
@@ -96,6 +166,16 @@ int main(int argc, char** argv)
         g_treeDemo.processKey(key);
 
     }
+
+    //try {
+        //the.load(argv[1]);
+    //consoleRun();
+    //}
+    //catch (cv::Exception ex)
+    //{
+    //    cerr << "cv exception: " << ex.what();
+    //    return -1;
+    //}
 
     return 0;
 }

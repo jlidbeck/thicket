@@ -177,6 +177,7 @@
     <ClInclude Include="util.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ExactRationalAngleTree.h" />
     <ClCompile Include="incommensurable_trig.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="tree.cpp" />

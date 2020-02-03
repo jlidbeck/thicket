@@ -270,7 +270,7 @@ void test()
 
 }
 
-int runTests()
+inline int runTests()
 {
     test<16, 30>();
     test<8, 15>();
