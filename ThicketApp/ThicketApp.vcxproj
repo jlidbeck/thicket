@@ -130,6 +130,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
+      <AdditionalLibraryDirectories>$(SolutionDir)packages\opencv.win.native.310.3.0\build\native\lib\$(Platform)\v140\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -155,6 +156,7 @@
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>$(SolutionDir)packages\opencv.win.native.310.3.0\build\native\lib\$(Platform)\v140\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -181,7 +183,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(SolutionDir)packages\opencv.win.native.310.3.0\build\native\lib\$(Platform)\v140\$(Configuration)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opencv_calib3d310.lib;opencv_core310.lib;opencv_features2d310.lib;opencv_flann310.lib;opencv_highgui310.lib;opencv_imgcodecs310.lib;opencv_imgproc310.lib;opencv_ml310.lib;opencv_objdetect310.lib;opencv_photo310.lib;opencv_shape310.lib;opencv_stitching310.lib;opencv_superres310.lib;opencv_video310.lib;opencv_videoio310.lib;opencv_videostab310.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opencv_core310.lib;opencv_features2d310.lib;opencv_flann310.lib;opencv_highgui310.lib;opencv_imgcodecs310.lib;opencv_imgproc310.lib;opencv_ml310.lib;opencv_objdetect310.lib;opencv_photo310.lib;opencv_shape310.lib;opencv_stitching310.lib;opencv_superres310.lib;opencv_video310.lib;opencv_videoio310.lib;opencv_videostab310.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -222,11 +224,15 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="..\packages\nlohmann.json.3.9.1\build\native\nlohmann.json.targets" Condition="Exists('..\packages\nlohmann.json.3.9.1\build\native\nlohmann.json.targets')" />
+    <Import Project="..\packages\opencv.win.native.redist.310.3.0\build\native\opencv.win.native.redist.targets" Condition="Exists('..\packages\opencv.win.native.redist.310.3.0\build\native\opencv.win.native.redist.targets')" />
+    <Import Project="..\packages\opencv.win.native.310.3.0\build\native\opencv.win.native.targets" Condition="Exists('..\packages\opencv.win.native.310.3.0\build\native\opencv.win.native.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\nlohmann.json.3.9.1\build\native\nlohmann.json.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\nlohmann.json.3.9.1\build\native\nlohmann.json.targets'))" />
+    <Error Condition="!Exists('..\packages\opencv.win.native.redist.310.3.0\build\native\opencv.win.native.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\opencv.win.native.redist.310.3.0\build\native\opencv.win.native.redist.targets'))" />
+    <Error Condition="!Exists('..\packages\opencv.win.native.310.3.0\build\native\opencv.win.native.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\opencv.win.native.310.3.0\build\native\opencv.win.native.targets'))" />
   </Target>
 </Project>
