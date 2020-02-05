@@ -369,6 +369,7 @@ bool TreeDemo::processKey(int key)
         return true;
 
     case 'o':
+    case 0x710000:  // F2
     {
         if (m_currentFileIndex < 0)
         {
@@ -536,6 +537,7 @@ bool TreeDemo::processKey(int key)
 
     case '.':
     case 190:
+    case 0x790000:  // F10
     {
         beginStepMode();
         return true;
@@ -543,6 +545,7 @@ bool TreeDemo::processKey(int key)
 
     case ',':
     case 188:
+    case 0x740000:  // F5
     {
         endStepMode();
         return true;
@@ -685,6 +688,11 @@ bool TreeDemo::processKey(int key)
 		}
 		return true;
 	}
+
+    case 0x100000:  // shift
+    case 0x110000:  // ctrl
+    case 0x5b0000:  // Windows key
+        return true;
 
     default:
         printf("? %d %x\n", key, key);

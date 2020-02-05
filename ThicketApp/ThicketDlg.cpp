@@ -690,6 +690,8 @@ void CThicketDlg::OnLvnColumnclickTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 
 void CThicketDlg::OnStnClickedImage()
 {
-	// TODO: Add your control notification handler code here
+	CRect clientRect;
+	GetClientRect(&clientRect);
+	m_matView.MoveWindow(&clientRect);
 }
 
