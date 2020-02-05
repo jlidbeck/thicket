@@ -3,12 +3,24 @@
 #include <opencv2/opencv.hpp>
 
 
-class CMatView : public CStatic
+class CMatView : public CScrollView
 {
+	DECLARE_DYNCREATE(CMatView)
+
     cv::Mat m_mat;
+
 public:
+    CMatView();
+	virtual ~CMatView();
 
     void SetImage(cv::Mat const& mat);
+
+#ifdef _DEBUG
+    virtual void AssertValid() const;
+#ifndef _WIN32_WCE
+    virtual void Dump(CDumpContext& dc) const;
+#endif
+#endif
 
 protected:
     virtual void PostNcDestroy() override
@@ -18,10 +30,9 @@ protected:
         // as this would cause memory corruption.
         // CScrollView::PostNcDestroy();
     }
+    virtual void OnDraw(CDC *pDC) override;
+    virtual void OnInitialUpdate();     // first time after construct
+    virtual void OnUpdate(CView* /*pSender*/, LPARAM /*lHint*/, CObject* /*pHint*/);
     DECLARE_MESSAGE_MAP()
-    HBRUSH CtlColor(CDC* pDC, UINT nCtlColor);
-    afx_msg void OnPaint();
-    afx_msg BOOL OnEraseBkgnd(CDC* pDC);
-    virtual void DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct) override;
 };
 
