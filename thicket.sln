@@ -9,6 +9,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ThicketApp", "ThicketApp\Th
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ThicketTest", "ThicketTest\ThicketTest.vcxproj", "{40473DB4-1E21-4771-B557-8BEAFAB1B91D}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Thicket", "Thicket\Thicket.vcxproj", "{389DBF4D-ECDE-4D8D-8576-B8269183E6E0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -41,6 +43,14 @@ Global
 		{40473DB4-1E21-4771-B557-8BEAFAB1B91D}.Release|x64.Build.0 = Release|x64
 		{40473DB4-1E21-4771-B557-8BEAFAB1B91D}.Release|x86.ActiveCfg = Release|Win32
 		{40473DB4-1E21-4771-B557-8BEAFAB1B91D}.Release|x86.Build.0 = Release|Win32
+		{389DBF4D-ECDE-4D8D-8576-B8269183E6E0}.Debug|x64.ActiveCfg = Debug|x64
+		{389DBF4D-ECDE-4D8D-8576-B8269183E6E0}.Debug|x64.Build.0 = Debug|x64
+		{389DBF4D-ECDE-4D8D-8576-B8269183E6E0}.Debug|x86.ActiveCfg = Debug|Win32
+		{389DBF4D-ECDE-4D8D-8576-B8269183E6E0}.Debug|x86.Build.0 = Debug|Win32
+		{389DBF4D-ECDE-4D8D-8576-B8269183E6E0}.Release|x64.ActiveCfg = Release|x64
+		{389DBF4D-ECDE-4D8D-8576-B8269183E6E0}.Release|x64.Build.0 = Release|x64
+		{389DBF4D-ECDE-4D8D-8576-B8269183E6E0}.Release|x86.ActiveCfg = Release|Win32
+		{389DBF4D-ECDE-4D8D-8576-B8269183E6E0}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
