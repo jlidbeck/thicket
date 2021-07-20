@@ -96,6 +96,7 @@ BEGIN_MESSAGE_MAP(CThicketDlg, CDialogEx)
 	ON_WM_DESTROY()
 	ON_WM_KEYDOWN()
 	ON_WM_CHAR()
+	ON_NOTIFY_EX(TTN_NEEDTEXT, 0, &CThicketDlg::OnTtnNeedText)
 	ON_BN_CLICKED(IDC_RANDOMIZE, &CThicketDlg::OnBnClickedRandomize)
 	ON_BN_CLICKED(IDC_STEP, &CThicketDlg::OnBnClickedStep)
 	ON_BN_CLICKED(IDC_START, &CThicketDlg::OnBnClickedStart)
@@ -227,6 +228,8 @@ BOOL CThicketDlg::OnInitDialog()
 	ScreenToClient(&rc);
 	m_minDialogSize = rc.Size();
 
+	EnableToolTips();
+
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
 
@@ -248,6 +251,40 @@ void CThicketDlg::OnFileOpenPrevious()
 void CThicketDlg::OnFileSave()
 {
 	m_demo.save();
+}
+
+
+BOOL CThicketDlg::OnTtnNeedText(UINT /*id*/, NMHDR* pNMHDR, LRESULT* /*pResult*/)
+{
+	TOOLTIPTEXT* pTTT = (TOOLTIPTEXT*)pNMHDR;
+
+	if (pTTT->uFlags & TTF_IDISHWND)
+	{
+		// idFrom is actually the HWND of the tool
+		auto nID = ::GetDlgCtrlID((HWND)pNMHDR->idFrom);
+
+		static CString str;
+		str.Empty();
+
+		switch (nID)
+		{
+		case IDC_RANDOMIZE:
+			str = _T("Randomize settings");
+			break;
+
+		case IDC_STEP:
+			str = _T("Single step. Restarts if complete");
+			break;
+		}
+
+		if (!str.IsEmpty())
+		{
+			pTTT->lpszText = str.GetBuffer();
+			return true;
+		}
+	}
+
+	return false;
 }
 
 
