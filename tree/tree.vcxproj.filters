@@ -2,14 +2,12 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="incommensurable_trig.cpp" />
-    <ClCompile Include="pch.cpp" />
     <ClCompile Include="tree.cpp" />
     <ClCompile Include="treedemo.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GridTree.h" />
-    <ClInclude Include="pch.h" />
     <ClInclude Include="tree.h" />
     <ClInclude Include="util.h" />
     <ClInclude Include="ReptileTree.h" />
