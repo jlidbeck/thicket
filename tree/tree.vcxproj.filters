@@ -14,6 +14,7 @@
     <ClInclude Include="SelfLimitingPolygonTree.h" />
     <ClInclude Include="ColorTransform.h" />
     <ClInclude Include="treedemo.h" />
+    <ClInclude Include="simple_svg_1.0.0.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

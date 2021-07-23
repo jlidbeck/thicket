@@ -171,6 +171,7 @@
     <ClInclude Include="ColorTransform.h" />
     <ClInclude Include="ReptileTree.h" />
     <ClInclude Include="SelfLimitingPolygonTree.h" />
+    <ClInclude Include="simple_svg_1.0.0.hpp" />
     <ClInclude Include="tree.h" />
     <ClInclude Include="treedemo.h" />
     <ClInclude Include="util.h" />
