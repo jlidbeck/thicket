@@ -19,6 +19,10 @@ namespace fs = std::filesystem;
 using std::cout;
 using std::endl;
 
+// Ignore warnings about double to float conversion
+#pragma warning (disable : 4305)
+#pragma warning (disable : 4244)
+
 
 //  Limited-growth qtrees
 //  These models limit growth by prohibiting self-intersection
@@ -32,7 +36,7 @@ protected:
     // --- settings ---
 
     int polygonSides = 5;
-    int starAngle = 0;
+    float starAngle = 0;
     cv::Scalar rootNodeColor = cv::Scalar(0.0, 0.0, 1.0, 1.0);
 
     std::vector<cv::Point2f> drawPolygon;
@@ -92,7 +96,7 @@ public:
 
         fieldResolution = j.at("fieldResolution");
         polygonSides = (j.contains("polygonSides") ? j.at("polygonSides").get<int>() : 5);
-        starAngle    = (j.contains("starAngle"   ) ? j.at("starAngle"   ).get<int>() : 0);
+        starAngle    = (j.contains("starAngle"   ) ? j.at("starAngle"   ).get<float>() : 0);
         
         if (j.contains("rootNode"))
         {
@@ -107,18 +111,18 @@ public:
         float maxRadius = 10.0;
         domain = cv::Rect_<float>(-maxRadius, -maxRadius, maxRadius * 2, maxRadius * 2);
         polygonSides = 5;
-        starAngle = 36;
+        starAngle = 36.0f;
 
         if (randomize)
         {
-            maxRadius = 5.0 + r(40.0);
+            maxRadius = (float)(5.0 + r(40.0));
             domain = cv::Rect_<float>(-maxRadius, -maxRadius, maxRadius * 2, maxRadius * 2);
             polygonSides = (randomize % 6) + 3;
-            starAngle = ((randomize % 12) < 6 ? 60 : 0);
+            starAngle = ((randomize % 12) < 6 ? 60.0f : 0.0f);
             //gestationRandomness = r(200.0);
         }
 
-        if (starAngle)
+        if (starAngle > 0.0f)
             util::polygon::createStar(polygon, polygonSides, starAngle);
         else
             util::polygon::createRegularPolygon(polygon, polygonSides);
@@ -562,7 +566,7 @@ REGISTER_QTREE_TYPE(SelfLimitingPolygonTree);
 
 class ScaledPolygonTree : public SelfLimitingPolygonTree
 {
-    double m_ratio;
+    float m_ratio;
     bool m_ambidextrous;
 
 public:
@@ -570,7 +574,7 @@ public:
     {
         SelfLimitingPolygonTree::setRandomSeed(randomize);
 
-        fieldResolution = 100.0;
+        fieldResolution = 100;
         float maxRadius = 4.0;
         domain = cv::Rect_<float>(-maxRadius, -maxRadius, maxRadius * 2, maxRadius * 2);
 
@@ -590,10 +594,10 @@ public:
         transforms.clear();
         for (int i = 0; i < polygon.size(); ++i)
         {
-            transforms.push_back(createEdgeTransform(i, polygon.size() - 1, false, 0.0f, m_ratio));
+            transforms.push_back(createEdgeTransform(i, polygon.size() - 1, false, 0.0, m_ratio));
 
             if (m_ambidextrous)
-                transforms.push_back(createEdgeTransform(i, polygon.size() - 1, true, 1.0f - m_ratio, 1.0f));
+                transforms.push_back(createEdgeTransform(i, polygon.size() - 1, true, 1.0 - m_ratio, 1.0));
 
         }
 

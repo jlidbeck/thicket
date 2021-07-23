@@ -152,8 +152,15 @@ public:
         gestation = gestation_;
     }
 
-    template<typename _Tp>
-    qtransform(_Tp m00, _Tp m01, _Tp mtx, _Tp m10, _Tp m11, _Tp mty, ColorTransform const &colorTransform_)
+    //template<typename _Tp>
+    //qtransform(_Tp m00, _Tp m01, _Tp mtx, _Tp m10, _Tp m11, _Tp mty, ColorTransform const &colorTransform_)
+    //{
+    //    transformMatrix = Matx33(m00, m01, mtx, m10, m11, mty, 0, 0, 1);
+    //    colorTransform = colorTransform_;
+    //    gestation = 1.0;
+    //}
+
+    qtransform(float m00, float m01, float mtx, float m10, float m11, float mty, ColorTransform const& colorTransform_)
     {
         transformMatrix = Matx33(m00, m01, mtx, m10, m11, mty, 0, 0, 1);
         colorTransform = colorTransform_;

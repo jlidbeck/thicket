@@ -117,8 +117,8 @@ namespace util
             cv::Point_<_Tp> srcv = src1 - src0;
             cv::Point_<_Tp> destv = dest1 - dest0;
             auto srcnorm = srcv.ddot(srcv);
-            _Tp sc = srcv.ddot(destv) / srcnorm;
-            _Tp ss = srcv.cross(destv) / srcnorm;
+            _Tp sc = (_Tp)(srcv.ddot( destv) / srcnorm);
+            _Tp ss = (_Tp)(srcv.cross(destv) / srcnorm);
             auto scrot = cv::Matx<_Tp, 3, 3>(
                 sc, -ss, 0,
                 ss,  sc, 0,

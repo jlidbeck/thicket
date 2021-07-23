@@ -104,7 +104,7 @@ void TreeDemo::sendProgressUpdate()
     if (!!m_progressCallback)
     {
         //std::unique_lock<std::mutex> lock(demo_mutex);
-        m_quit |= m_progressCallback(1, totalNodesProcessed);
+        m_quit |= (0 != m_progressCallback(1, m_totalNodesProcessed));
     }
     else
     {

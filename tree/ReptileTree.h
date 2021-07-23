@@ -12,6 +12,9 @@ using std::cout;
 using std::endl;
 
 
+// We don't need to be warned about double literals casting to float
+#pragma warning (disable : 4305)
+
 #define Half12  0.94387431268
 
 //  (1/2)^(1/n)
@@ -50,8 +53,8 @@ public:
                 } };
 
             transforms = { {
-                    qtransform( 90.0, halfRoot(2), cv::Point2f(0,  0.9)),
-                    qtransform(-90.0, halfRoot(2), cv::Point2f(0, -0.9))
+                    qtransform( 90.0, halfRoot(2), cv::Point2f(0,  0.9f)),
+                    qtransform(-90.0, halfRoot(2), cv::Point2f(0, -0.9f))
                 } };
 
             m_rootNode.globalTransform = util::transform3x3::getRotationMatrix2D(cv::Point2f(), 90, 1);
@@ -61,7 +64,7 @@ public:
         case 1:
             polygon = { {
                     // L
-                    {0.0f,0},{0.62f,0},{0.62f,0.3f},{0.3f,0.3f},{0.3f,1},{0,1}
+                    {0,0},{0.62,0},{0.62,0.3},{0.3,0.3},{0.3,1},{0,1}
                 } };
 
             transforms = { {
@@ -115,10 +118,10 @@ public:
             transforms = { {
                     //          00  01  tx   10  11  ty
                     qtransform(-.2,-.4, .4, -.4, .2, .8,  ColorTransform::rgbSink(Matx41(0,0,9,1)*0.111f, 0.1f)),
-                    qtransform(.4,-.2, .2, -.2,-.4, .4,  ColorTransform::rgbSink(Matx41(0,4,9,1)*0.111f, 0.1f)),
-                    qtransform(.4, .2, .2, -.2, .4, .4,  ColorTransform::rgbSink(Matx41(9,9,9,1)*0.111f, 0.1f)),
+                    qtransform( .4,-.2, .2, -.2,-.4, .4,  ColorTransform::rgbSink(Matx41(0,4,9,1)*0.111f, 0.1f)),
+                    qtransform( .4, .2, .2, -.2, .4, .4,  ColorTransform::rgbSink(Matx41(9,9,9,1)*0.111f, 0.1f)),
                     qtransform(-.4,-.2,1.2,  .2,-.4, .4,  ColorTransform::rgbSink(Matx41(0,9,4,1)*0.111f, 0.1f)),
-                    qtransform(.4,-.2,1.2, -.2,-.4, .4,  ColorTransform::rgbSink(Matx41(0,0,0,1)*0.111f, 0.1f))
+                    qtransform( .4,-.2,1.2, -.2,-.4, .4,  ColorTransform::rgbSink(Matx41(0,0,0,1)*0.111f, 0.1f))
                 } };
 
             break;
@@ -232,7 +235,7 @@ public:
         try {
             qtree::from_json(j);
         }
-        catch (std::exception &ex)
+        catch (std::exception &)
         {
             // let's ignore exceptions for now
             randomSeed = 42;

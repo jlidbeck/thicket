@@ -161,7 +161,7 @@ void CThicketDlg::OnSysCommand(UINT nID, LPARAM lParam)
 	}
 
 	default:
-		printf("SYSCMD %04x %04x    %d %d\n", nID, lParam, nID, lParam);
+		printf("SYSCMD %04x %04llx    %d %lld\n", nID, lParam, nID, lParam);
 		CDialogEx::OnSysCommand(nID, lParam);
 	}
 }
