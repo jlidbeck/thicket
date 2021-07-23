@@ -195,7 +195,6 @@
   <ItemGroup>
     <ClInclude Include="framework.h" />
     <ClInclude Include="MatView.h" />
-    <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="ThicketApp.h" />

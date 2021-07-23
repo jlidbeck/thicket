@@ -2,7 +2,6 @@
 // ThicketApp.cpp : Defines the class behaviors for the application.
 //
 
-#include "pch.h"
 #include "framework.h"
 #include "ThicketApp.h"
 #include "ThicketDlg.h"

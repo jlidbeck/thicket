@@ -2,7 +2,6 @@
 // ThicketDlg.cpp : implementation file
 //
 
-#include "pch.h"
 #include "framework.h"
 #include "ThicketApp.h"
 #include "ThicketDlg.h"
