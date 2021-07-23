@@ -2,6 +2,7 @@
 
 #include "ColorTransform.h"
 #include "util.h"
+#include "simple_svg.hpp"
 #include <opencv2/core/core.hpp>
 #include <vector>
 #include <queue>
@@ -37,6 +38,8 @@ class qcanvas
 public:
     Matx33 globalTransform;
     cv::Mat image;
+    svg::Document svgDocument;
+
 
     qcanvas() {
     }
@@ -44,6 +47,32 @@ public:
     void create(cv::Mat im)
     {
         image = im;
+    }
+
+    void clear()
+    {
+        image = 0;
+        svgDocument = svg::Document();
+
+        // TODO: use proper model bounds
+        //auto rc = getBoundingRect();
+        //svg::Dimensions dimensions(rc.width, rc.height);
+        svg::Dimensions dimensions(200, 200);
+
+        svgDocument = svg::Document(svg::Layout(dimensions, svg::Layout::Origin::TopLeft)); // no flip, no scale
+
+        // Red image border.
+        svg::Polygon border(svg::Stroke(1, svg::Color::Red));
+        border << svg::Point(0, 0) << svg::Point(dimensions.width, 0)
+            << svg::Point(dimensions.width, dimensions.height) << svg::Point(0, dimensions.height);
+        svgDocument << border;
+
+        svgDocument << svg::Circle(svg::Point(80, 80), 20, svg::Fill(svg::Color(100, 200, 120)), svg::Stroke(1, svg::Color(200, 250, 150)));
+
+        svgDocument << svg::Text(svg::Point(5, 77), "Simple SVG", svg::Color::Silver, svg::Font(10, "Franklin Gothic"));
+
+        svgDocument << svg::Rectangle(svg::Point(70, 55), 20, 15, svg::Color::Yellow);
+
     }
 
     // sets global transform map to map provided domain to image, centered, vertically flipped
@@ -80,6 +109,19 @@ public:
         {
             cv::fillPoly(image, pts, color, cv::LineTypes::LINE_AA, 4);
         }
+
+
+
+        svg::Polygon svgPolygon(
+            svg::Fill(svg::Color(color[2], color[1], color[0])), 
+            svg::Stroke()   // no outline
+        );
+        for (auto const& p : v)
+            svgPolygon << svg::Point(p.x, p.y);
+
+        svgDocument << svgPolygon;
+
+
     }
 
 };
@@ -439,7 +481,7 @@ public:
     virtual void redrawAll(qcanvas &canvas) {}
     virtual void drawNode(qcanvas &canvas, qnode const &node);
 
-    virtual void saveImage(fs::path imagePath) { };
+    virtual void saveImage(fs::path imagePath, qcanvas const &canvas) { };
 
     virtual void combineWith(qtree const &tree, double a)
     {

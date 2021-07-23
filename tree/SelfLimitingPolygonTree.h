@@ -544,7 +544,8 @@ public:
     //  Node draw function for tree of nodes with all the same polygon
     virtual void redrawAll(qcanvas &canvas) override
     {
-        canvas.image = 0;
+        canvas.clear();
+
         for (auto & node : m_nodeList)
         {
             drawNode(canvas, node);
@@ -785,11 +786,18 @@ public:
     }
 
     // overriding to save intersection field mask as well
-    virtual void saveImage(fs::path imagePath) override
+    virtual void saveImage(fs::path imagePath, qcanvas const& canvas) override
     {
+        auto svgPath = imagePath.replace_extension("svg");
+
         // save the intersection field mask
         imagePath = imagePath.replace_extension("mask.png");
         cv::imwrite(imagePath.string(), m_field);
+
+        //auto rc = getBoundingRect();
+        //canvas.svgDocument.setDimensions(rc.width, rc.height);
+
+        canvas.svgDocument.save(svgPath.string());
     }
 
     void drawNode(qcanvas &canvas, qnode const &node) override

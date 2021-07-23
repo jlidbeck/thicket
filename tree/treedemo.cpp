@@ -184,8 +184,8 @@ void TreeDemo::processCommands()
 
         cout << "--- Starting run: " << pTree->name << ": " << pTree->transforms.size() << " transforms" << endl;
 
-        canvas.image = cv::Mat3b(renderSize);
-        canvas.image = 0;
+        canvas.create(cv::Mat3b(renderSize));
+        canvas.clear();
         canvas.setScaleToFit(pTree->getBoundingRect(), imagePadding);
 
 
@@ -686,7 +686,7 @@ int TreeDemo::save()
     }
 
     // allow extending classes to customize the save
-    pTree->saveImage(imagePath);
+    pTree->saveImage(imagePath, canvas);
 
     // save the settings too
     std::ofstream outfile(imagePath.replace_extension("settings.json"));
