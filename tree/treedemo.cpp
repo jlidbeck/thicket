@@ -73,6 +73,9 @@ void TreeDemo::startWorkerTask()
 // sets stepping mode and performs one step
 bool TreeDemo::beginStepMode()
 {
+    if (pTree == nullptr)
+        return false;
+
     endWorkerTask();
 
     m_stepping = true;
@@ -87,6 +90,9 @@ bool TreeDemo::beginStepMode()
 
 bool TreeDemo::endStepMode()
 {
+    if (pTree == nullptr)
+        return false;
+
     m_stepping = false;
     m_maxNodesProcessedPerFrame = 64;
 
@@ -603,23 +609,24 @@ bool TreeDemo::processKey(int key)
 
     case 'B':
     {
-        m_pBreedTree = pTree->clone();
-        cout << "** tree " << m_pBreedTree->name << " cloned to breed **\n";
+        m_breeders.push_back(pTree->clone());
+        cout << "** tree " << m_breeders.back()->name << " cloned to breed pool [" << m_breeders.size() - 1 << "] **\n";
         return true;
     }
 
     case 'b':
     {
-        if (m_pBreedTree == nullptr)
+        if (m_breeders.empty())
         {
-            m_pBreedTree = pTree->clone();
-            cout << "** tree "<<m_pBreedTree->name<<" cloned to breed **\n";
+            m_breeders.push_back(pTree->clone());
+            cout << "** tree "<< m_breeders.back()->name<<" cloned to breed pool [" << m_breeders.size()-1 << "] **\n";
         }
         else
         {
+            auto other = m_breeders.back();
             cout << "** Breeding current " << pTree->name << endl;
-            cout << "** Breeding with " << m_pBreedTree->name << endl;
-            pTree->combineWith(*m_pBreedTree, 0.1);
+            cout << "** Breeding with " << other->name << endl;
+            pTree->combineWith(*other, 0.1);
             cout << "** trees combined: "<<pTree->name<<" **\n";
             //restart = true;
         }
@@ -628,15 +635,15 @@ bool TreeDemo::processKey(int key)
 
 	case 2:		// Ctrl+B: swap current with breeding cache
 	{
-		if (m_pBreedTree != nullptr)
+        if (m_breeders.empty())
 		{
-			std::swap(m_pBreedTree, pTree);
+			cout << "** Nothing in breeding pool\n";
+		}
+        else
+        {
+			std::swap(m_breeders.back(), pTree);
 			restart();
 			cout << "** Swapped with breeding cache: loaded " << pTree->name << endl;
-		}
-		else
-		{
-			cout << "** Nothing in breeding cache\n";
 		}
 		return true;
 	}

@@ -11,6 +11,7 @@
 #include <nlohmann/json.hpp>
 #include <iostream>
 #include <unordered_map>
+#include <memory>
 
 
 using json = nlohmann::basic_json<>;
@@ -275,7 +276,7 @@ public:
 //  It creates a global function pointer (which is never used)
 //  and registers a constructor lambda for the given qtree-derived class
 #define REGISTER_QTREE_TYPE(TYPE) \
-    auto const g_constructor_ ## TYPE = qtree::registerConstructor(#TYPE, [](){ return new TYPE(); });
+    auto const g_constructor_ ## TYPE = qtree::registerConstructor(#TYPE, [](){ return std::shared_ptr<TYPE>( new TYPE() ); });
 
 class qtree
 {
@@ -407,21 +408,21 @@ public:
         }
     }
 
-    static std::map<string, std::function<qtree * ()> >& factory()
+    static std::map<string, std::function<std::shared_ptr<qtree> ()> >& factory()
     {
-        static std::map<string, std::function<qtree * ()> > factoryTable;
+        static std::map<string, std::function<std::shared_ptr<qtree> ()> > factoryTable;
         return factoryTable;
     }
 
     //  Registers a typed constructor lambda fn
-    static auto registerConstructor(string className, std::function<qtree*()> const &fn)
+    static auto registerConstructor(string className, std::function<std::shared_ptr<qtree>()> const &fn)
     {
         factory()[className] = fn;
         return fn;
     }
 
     //  Factory method to create instances of registered qtree-extending classes
-    static qtree* createTreeFromJson(json const &j)
+    static std::shared_ptr<qtree> createTreeFromJson(json const &j)
     {
         //  peek at the "_class" member of the json to see what class to instantiate
 
@@ -438,12 +439,22 @@ public:
         }
 
         auto pfn = factory().at(className);
-        qtree* pPrototype = pfn();
-        pPrototype->from_json(j);
+        std::shared_ptr<qtree> pPrototype;
+        try
+        {
+            pPrototype = pfn();
+            pPrototype->from_json(j);
+        }
+        catch (std::exception& ex)
+        {
+            std::cout << "Failed to create instance of '" << className << "' from JSON.\n";
+            std::cout << ex.what() << std::endl;
+            std::cout << j << std::endl;
+        }
         return pPrototype;
     }
 
-    qtree* clone() const
+    std::shared_ptr<qtree> clone() const
     {
         json j;
         to_json(j);

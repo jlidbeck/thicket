@@ -21,7 +21,7 @@ namespace fs = std::filesystem;
 class TreeDemo
 {
 public:
-    qtree *pTree = nullptr;
+    std::shared_ptr<qtree> pTree;
 
     qcanvas canvas;
 
@@ -34,8 +34,8 @@ private:
 
     ThornTree const m_defaultTree;
 
-    qtree *m_pBreedTree = nullptr;
-    
+    std::vector<std::shared_ptr<qtree> > m_breeders;
+
     cv::Mat m_loadedImage;
 
     int m_minNodesProcessedPerFrame = 1;
