@@ -107,6 +107,7 @@ BEGIN_MESSAGE_MAP(CThicketDlg, CDialogEx)
 	ON_NOTIFY(LVN_COLUMNCLICK, IDC_TRANSFORMS, &CThicketDlg::OnLvnColumnclickTransforms)
 	ON_MESSAGE(WM_RUN_PROGRESS, &CThicketDlg::OnRunProgress)
 	ON_STN_CLICKED(IDC_IMAGE, &CThicketDlg::OnStnClickedImage)
+	ON_WM_ERASEBKGND()
 END_MESSAGE_MAP()
 
 
@@ -222,6 +223,8 @@ BOOL CThicketDlg::OnInitDialog()
 	m_demo.m_progressCallback = [&](int w, int l) {
 		::PostMessage(m_hWnd, WM_RUN_PROGRESS, w, l);
 		return 0; };
+
+	m_matView.m_onLButtonDown = [&](UINT nFlags, CPoint point) { OnMatViewLButtonDown(nFlags, point); };
 
 	CRect rc;
 	GetWindowRect(&rc);
@@ -656,3 +659,44 @@ void CThicketDlg::OnStnClickedImage()
 	// TODO: Add your control notification handler code here
 }
 
+
+
+BOOL CThicketDlg::OnEraseBkgnd(CDC* pDC)
+{
+	return TRUE;
+}
+
+
+void CThicketDlg::OnMatViewLButtonDown(UINT nFlags, CPoint canvasPoint)
+{
+	if (!m_demo.pTree)
+		return;
+
+	auto pt = m_demo.canvas.canvasToModel(cv::Point(canvasPoint.x, canvasPoint.y));
+
+	std::vector<qnode> nodes;
+
+	// display info on node
+	m_demo.pTree->getNodesIntersecting(cv::Rect2f(pt, cv::Size2f(0, 0)), nodes);
+	for (auto& node : nodes)
+	{
+		vector<string> lineage;
+		m_demo.pTree->getLineage(node, lineage);
+		cout << "Node[" << node.id << "]:";
+		for (auto& tname : lineage)
+			cout << " " << tname;
+		cout << endl;
+	}
+	//return;
+
+	// delete block
+	m_demo.pTree->getNodesIntersecting(cv::Rect2f(pt.x-5, pt.y-5, 10, 10), nodes);
+	for (auto& node : nodes)
+	{
+		m_demo.pTree->removeNode(node.id);
+	}
+	m_demo.pTree->redrawAll(m_demo.canvas);
+
+	m_matView.Invalidate();
+	m_matView.UpdateWindow();
+}

@@ -43,6 +43,8 @@ protected:
 
 	afx_msg LRESULT OnRunProgress(WPARAM, LPARAM);
 
+	void OnMatViewLButtonDown(UINT nFlags, CPoint point);
+
 	// Generated message map functions
 	DECLARE_MESSAGE_MAP()
 	virtual BOOL OnInitDialog();
@@ -65,4 +67,5 @@ protected:
     afx_msg void OnNMClickTransforms(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnLvnColumnclickTransforms(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnStnClickedImage();
+	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 };

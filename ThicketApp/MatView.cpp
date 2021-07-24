@@ -15,6 +15,7 @@ BEGIN_MESSAGE_MAP(CMatView, CStatic)
     ON_WM_ERASEBKGND()
     ON_WM_PAINT()
     ON_WM_CTLCOLOR_REFLECT()
+    ON_WM_LBUTTONDOWN()
 END_MESSAGE_MAP()
 
 
@@ -127,4 +128,11 @@ void CMatView::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
     //    img.BitBlt(::GetDC(m_hWnd), 0, 0);
     //    img.ReleaseDC();
     //}
+}
+
+
+void CMatView::OnLButtonDown(UINT nFlags, CPoint point)
+{
+    if (m_onLButtonDown != nullptr)
+        m_onLButtonDown(nFlags, point);
 }
