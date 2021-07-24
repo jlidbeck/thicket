@@ -349,6 +349,9 @@ namespace util
         template<typename _Tp>
         cv::Point_<_Tp> centroid(std::vector<cv::Point_<_Tp> > &polygon)
         {
+            if (polygon.empty())
+                throw(std::exception("Empty polygon"));
+
             cv::Point_<_Tp> sum;
             for (auto const &pt : polygon)
                 sum += pt;

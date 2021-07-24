@@ -325,6 +325,11 @@ public:
 #pragma region Serialization
 
     //  Extending classes should override and invoke the base member as necessary
+    virtual void assertValid() const
+    {
+    }
+
+    //  Extending classes should override and invoke the base member as necessary
     virtual void to_json(json &j) const
     {
         //  extending classes need to override this value
@@ -388,12 +393,14 @@ public:
             domainShape = (j["bounds"]["shape"] == string("ellipse") ? DomainShape::ELLIPSE : DomainShape::RECT);
         }
 
-        if (j.contains("polygon"))
+        polygon.clear();
+        if (j.contains("polygon") && j["polygon"].is_array())
         {
             ::from_json(j.at("polygon"), polygon);
         }
 
-        if (j.contains("transforms"))
+        transforms.clear();
+        if (j.contains("transforms") && j["transforms"].is_array())
         {
             ::from_json(j.at("transforms"), transforms);
         }

@@ -64,6 +64,11 @@ public:
 
     SelfLimitingPolygonTree() { }
 
+    virtual void assertValid() const override
+    {
+        qtree::assertValid();
+    }
+
     virtual void to_json(json &j) const override
     {
         qtree::to_json(j);
@@ -769,8 +774,22 @@ public:
         randomizeTransforms(3);
     }
 
+    virtual void assertValid() const override
+    {
+        SelfLimitingPolygonTree::assertValid();
+
+        if (polygon.empty()) cout << "Warning: Missing polygon" << endl;
+        //if (polygon.empty()) throw std::exception("Missing polygon");
+        //if (polygon.size() < 3) throw std::exception("Invalid polygon");
+    }
+
     virtual void to_json(json &j) const override
     {
+        assertValid();
+
+        if (polygon.empty()) 
+            cout << "Warning: Missing polygon" << endl;
+
         SelfLimitingPolygonTree::to_json(j);
         
         j["_class"] = "ThornTree";
