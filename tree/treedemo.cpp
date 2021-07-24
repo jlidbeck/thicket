@@ -11,33 +11,33 @@ using std::endl;
 
 bool TreeDemo::isWorkerTaskRunning() const 
 { 
-    std::unique_lock<std::mutex> lock(demo_mutex);
+    std::unique_lock<std::mutex> lock(m_mutex);
 
-    return (s_run.valid() && !s_run._Is_ready());
+    return (m_currentRun.valid() && !m_currentRun._Is_ready());
 }
 
 void TreeDemo::endWorkerTask()
 {
-    //std::unique_lock<std::mutex> lock(demo_mutex);
+    //std::unique_lock<std::mutex> lock(m_mutex);
 
-    if (s_run.valid())
+    if (m_currentRun.valid())
     {
         printf("### Waiting for worker task ###\n");
 
-        s_cancel = true;
+        m_cancel = true;
 
-        s_run.wait();
+        m_currentRun.wait();
         std::future<void> invalid;
-        std::swap(s_run, invalid);
+        std::swap(m_currentRun, invalid);
 
-        s_cancel = false;
+        m_cancel = false;
     }
 }
 
 
 void TreeDemo::startWorkerTask()
 {
-    //std::unique_lock<std::mutex> lock(demo_mutex);
+    //std::unique_lock<std::mutex> lock(m_mutex);
 
     if (isWorkerTaskRunning())
     {
@@ -47,11 +47,11 @@ void TreeDemo::startWorkerTask()
 
     printf("### Starting worker task ###\n");
 
-    s_run = std::async(std::launch::async, [&] {
+    m_currentRun = std::async(std::launch::async, [&] {
 
         while (!pTree->nodeQueue.empty())
         {
-            if (s_cancel)
+            if (m_cancel)
                 return;
 
             int nodesProcessed = processNodes();
@@ -76,7 +76,7 @@ bool TreeDemo::beginStepMode()
     endWorkerTask();
 
     m_stepping = true;
-    maxNodesProcessedPerFrame = 1;
+    m_maxNodesProcessedPerFrame = 1;
 
     if (pTree->nodeQueue.empty())
         restart();
@@ -88,7 +88,7 @@ bool TreeDemo::beginStepMode()
 bool TreeDemo::endStepMode()
 {
     m_stepping = false;
-    maxNodesProcessedPerFrame = 64;
+    m_maxNodesProcessedPerFrame = 64;
 
     if (pTree->nodeQueue.empty())
         restart();
@@ -103,7 +103,7 @@ void TreeDemo::sendProgressUpdate()
 {
     if (!!m_progressCallback)
     {
-        //std::unique_lock<std::mutex> lock(demo_mutex);
+        //std::unique_lock<std::mutex> lock(m_mutex);
         m_quit |= (0 != m_progressCallback(1, m_totalNodesProcessed));
     }
     else
@@ -116,12 +116,12 @@ int TreeDemo::processNodes()
 {
     int nodesProcessed = 0;
     while (!pTree->nodeQueue.empty()
-        && nodesProcessed < maxNodesProcessedPerFrame
+        && nodesProcessed < m_maxNodesProcessedPerFrame
         //&& pTree->nodeQueue.top().det() >= cutoff 
-        && (nodesProcessed < minNodesProcessedPerFrame || pTree->nodeQueue.top().beginTime <= modelTime)
+        && (nodesProcessed < m_minNodesProcessedPerFrame || pTree->nodeQueue.top().beginTime <= m_modelTime)
         )
     {
-        //std::unique_lock<std::mutex> lock(demo_mutex);
+        //std::unique_lock<std::mutex> lock(m_mutex);
 
         auto currentNode = pTree->nodeQueue.top();
         if (!pTree->isViable(currentNode))
@@ -134,10 +134,10 @@ int TreeDemo::processNodes()
 
         nodesProcessed++;
         pTree->process();
-        modelTime = currentNode.beginTime + 1.0;
+        m_modelTime = currentNode.beginTime + 1.0;
     }
 
-    totalNodesProcessed += nodesProcessed;
+    m_totalNodesProcessed += nodesProcessed;
 
     sendProgressUpdate();
 
@@ -154,7 +154,7 @@ void TreeDemo::restart(bool randomize)
 
 void TreeDemo::processCommands()
 {
-    //std::unique_lock<std::mutex> lock(demo_mutex);
+    //std::unique_lock<std::mutex> lock(m_mutex);
 
     if (m_restart)
     {
@@ -164,16 +164,16 @@ void TreeDemo::processCommands()
 
         if (!pTree)
         {
-            pTree = &defaultTree;
+            pTree = m_defaultTree.clone();
             cout << "--- Set default tree\n";
         }
 
         if (m_randomize)
         {
-            pTree->setRandomSeed(++presetIndex);
-            //pTree->name = std::string("R") + std::to_string(presetIndex);
+            pTree->setRandomSeed(++m_presetIndex);
+            //pTree->name = std::string("R") + std::to_string(m_presetIndex);
             m_randomize = false;
-            cout << "--- Randomized [" << presetIndex << +"]\n";
+            cout << "--- Randomized [" << m_presetIndex << +"]\n";
         }
         pTree->create();
         pTree->transformCounts.clear();
@@ -184,16 +184,16 @@ void TreeDemo::processCommands()
 
         cout << "--- Starting run: " << pTree->name << ": " << pTree->transforms.size() << " transforms" << endl;
 
-        canvas.create(cv::Mat3b(renderSize));
+        canvas.create(cv::Mat3b(m_renderSize));
         canvas.clear();
-        canvas.setScaleToFit(pTree->getBoundingRect(), imagePadding);
+        canvas.setTransformToFit(pTree->getBoundingRect(), m_imagePadding);
 
 
-        startTime = std::chrono::steady_clock::now();
-        lastReportTime = 0;
+        m_startTime = std::chrono::steady_clock::now();
+        m_lastReportTime = 0;
 
-        modelTime = 0;
-        totalNodesProcessed = 0;
+        m_modelTime = 0;
+        m_totalNodesProcessed = 0;
 
         m_restart = false;
 
@@ -218,14 +218,14 @@ void TreeDemo::showCommands()
 void TreeDemo::showReport(double debounceSeconds)
 {
     std::chrono::steady_clock::time_point t = std::chrono::steady_clock::now();
-    double curTime = std::chrono::duration_cast<std::chrono::duration<double>>(t - startTime).count();
-    if (curTime - lastReportTime < debounceSeconds)
+    double curTime = std::chrono::duration_cast<std::chrono::duration<double>>(t - m_startTime).count();
+    if (curTime - m_lastReportTime < debounceSeconds)
     {
         return;
     }
 
-    lastReportTime = curTime;
-    cout << std::setw(8) << curTime << ": " << totalNodesProcessed << " nodes processed (" << ((double)totalNodesProcessed) / curTime << "/s)" << endl;
+    m_lastReportTime = curTime;
+    cout << std::setw(8) << curTime << ": " << m_totalNodesProcessed << " nodes processed (" << ((double)m_totalNodesProcessed) / curTime << "/s)" << endl;
 }
 
 int TreeDemo::openFile(int idx)
@@ -258,69 +258,53 @@ int TreeDemo::openFile(int idx)
 
 const int MAX = 1000;
 
-//  finds most recent file and sets {currentFileIndex}.
+//  finds most recent file and sets {m_currentFileIndex}.
 
 void TreeDemo::findNextUnusedFileIndex()
 {
-    currentFileIndex = MAX;
+    m_currentFileIndex = MAX;
     findPreviousFile();
-    ++currentFileIndex;
+    ++m_currentFileIndex;
 }
 
-//  currentFileIndex will be set to 0 if no saved files are found
+//  set m_currentFileIndex to the largest-numbered file less than m_currentFileIndex, or
+//  -1 if no saved files are found
 void TreeDemo::findPreviousFile()
 {
-    if (currentFileIndex < 0)
-        currentFileIndex = 0;
-
     fs::path jsonPath;
-    char filename[40];
 
-    int lastIdx = 0, prevIdx = 0;
+    int lastIdx = -1;
     for (auto& p : fs::directory_iterator("."))
     {
         //std::cout << p.path() << '\n';
         int idx;
         if (sscanf_s(p.path().filename().string().c_str(), "tree%d.settings.json", &idx) == 1)
         {
-            if (idx > lastIdx)
+            if (idx > lastIdx && idx < m_currentFileIndex)
                 lastIdx = idx;
-            if (idx<currentFileIndex && idx>prevIdx)
-                prevIdx = idx;
         }
     }
-    if (prevIdx > 0) {
-        currentFileIndex = prevIdx;
-        return;
-    }
-    if (lastIdx > 0) {
-        currentFileIndex = lastIdx;
-        return;
-    }
-
-    currentFileIndex = -1;// nothing found
+        
+    m_currentFileIndex = lastIdx;
 }
 
-//  finds most recent file and sets {currentFileIndex}.
-//  currentFileIndex will be set to 0 if no saved files are found
+//  set m_currentFileIndex to the next-highest-numbered existing file,
+//  or -1 if no higher-numbered files are found
 void TreeDemo::findNextFile()
 {
-    if (currentFileIndex < 0)
-        currentFileIndex = 0;
-
     fs::path jsonPath;
     char filename[40];
-    for (int i = currentFileIndex+1; (i%=MAX) != currentFileIndex; i+=(1))
+    for (int i = m_currentFileIndex+1; i < MAX; ++i)
     {
         sprintf_s(filename, "tree%04d.settings.json", i);
         if (fs::exists(filename))
         {
-            currentFileIndex = i;
+            m_currentFileIndex = i;
             return;
         }
     }
 
-    currentFileIndex = -1;// nothing found
+    m_currentFileIndex = -1;// nothing found
 }
 
 bool TreeDemo::processKey(int key)
@@ -349,17 +333,17 @@ bool TreeDemo::processKey(int key)
 
     case 'o':
     {
-        if (currentFileIndex < 0)
+        if (m_currentFileIndex < 0)
         {
             findPreviousFile();
         }
 
         int idx = -1;
-        cout << "Current file index is " << currentFileIndex << ".\nEnter index: ";
+        cout << "Current file index is " << m_currentFileIndex << ".\nEnter index: ";
         if (std::cin >> idx)
         {
             if (idx < 0)
-                idx = currentFileIndex;
+                idx = m_currentFileIndex;
             openFile(idx);
         }
         return true;
@@ -394,7 +378,7 @@ bool TreeDemo::processKey(int key)
     switch (key)
     {
     case 'h':           // HD/preview toggle
-        renderSize = (renderSize == renderSizePreview ? renderSizeHD : renderSizePreview);
+        m_renderSize = (m_renderSize == m_renderSizePreview ? m_renderSizeHD : m_renderSizePreview);
         restart();
         return true;
 
@@ -605,7 +589,7 @@ bool TreeDemo::processKey(int key)
     //    {
     //        cout << "** remove(" << 42 << "): " << count << " nodes removed\n";
     //        pTree->redrawAll(canvas);
-    //        cv::imshow("Memtest", canvas.image); // Show our image inside it.
+    //        cv::imshow("Memtest", canvas.m_image); // Show our image inside it.
     //        break;
     //    }
     //    break;
@@ -619,23 +603,23 @@ bool TreeDemo::processKey(int key)
 
     case 'B':
     {
-        pBreedTree = pTree->clone();
-        cout << "** tree " << pBreedTree->name << " cloned to breed **\n";
+        m_pBreedTree = pTree->clone();
+        cout << "** tree " << m_pBreedTree->name << " cloned to breed **\n";
         return true;
     }
 
     case 'b':
     {
-        if (pBreedTree == nullptr)
+        if (m_pBreedTree == nullptr)
         {
-            pBreedTree = pTree->clone();
-            cout << "** tree "<<pBreedTree->name<<" cloned to breed **\n";
+            m_pBreedTree = pTree->clone();
+            cout << "** tree "<<m_pBreedTree->name<<" cloned to breed **\n";
         }
         else
         {
             cout << "** Breeding current " << pTree->name << endl;
-            cout << "** Breeding with " << pBreedTree->name << endl;
-            pTree->combineWith(*pBreedTree, 0.1);
+            cout << "** Breeding with " << m_pBreedTree->name << endl;
+            pTree->combineWith(*m_pBreedTree, 0.1);
             cout << "** trees combined: "<<pTree->name<<" **\n";
             //restart = true;
         }
@@ -644,9 +628,9 @@ bool TreeDemo::processKey(int key)
 
 	case 2:		// Ctrl+B: swap current with breeding cache
 	{
-		if (pBreedTree != nullptr)
+		if (m_pBreedTree != nullptr)
 		{
-			std::swap(pBreedTree, pTree);
+			std::swap(m_pBreedTree, pTree);
 			restart();
 			cout << "** Swapped with breeding cache: loaded " << pTree->name << endl;
 		}
@@ -666,23 +650,28 @@ bool TreeDemo::processKey(int key)
 
 int TreeDemo::save()
 {
-    std::unique_lock<std::mutex> lock(demo_mutex);
+    std::unique_lock<std::mutex> lock(m_mutex);
 
     findNextUnusedFileIndex();
 
-    cout << "Saving image and settings: " << currentFileIndex << endl;
+    cout << "Saving m_image and settings: " << m_currentFileIndex << endl;
 
-    fs::path imagePath;
-    char filename[24];
-    sprintf_s(filename, "tree%04d.png", currentFileIndex);
-    imagePath = filename;
+    char name[24];
+    sprintf_s(name, "tree%04d", m_currentFileIndex);
 
-    cv::imwrite(imagePath.string(), canvas.image);
+    // Write raster image to PNG file
+
+    fs::path imagePath = std::string(name) + ".png";
+    cv::imwrite(imagePath.string(), canvas.getImage());
+
+    // Write vector image to SVG file
+
+    auto svgPath = imagePath.replace_extension("svg");
+    canvas.getSVG().save(svgPath.string());
 
     if (pTree->name.empty())
     {
-        sprintf_s(filename, "tree%04d", currentFileIndex);
-        pTree->name = filename;
+        pTree->name = name;
     }
 
     // allow extending classes to customize the save
@@ -701,37 +690,40 @@ int TreeDemo::save()
 
 int TreeDemo::openPrevious()
 {
+    if (m_currentFileIndex <= 0)
+        m_currentFileIndex = 1000;
+
     findPreviousFile();
-    if (currentFileIndex < 0)
+    if (m_currentFileIndex < 0)
     {
         printf("No files found in current directory\n");
         return -1;
     }
-    return openFile(currentFileIndex);
+    return openFile(m_currentFileIndex);
 }
 
 int TreeDemo::openNext()
 {
     findNextFile();
-    if (currentFileIndex < 0)
+    if (m_currentFileIndex < 0)
     {
         printf("No files found in current directory\n");
         return -1;
     }
-    return openFile(currentFileIndex);
+    return openFile(m_currentFileIndex);
 }
 
 int TreeDemo::load(fs::path imagePath)
 {
     imagePath = fs::absolute(imagePath);
-    loadedImage = cv::imread(imagePath.string(), cv::ImreadModes::IMREAD_COLOR); // Read the file
-    if (!loadedImage.data) // Check for invalid input
+    m_loadedImage = cv::imread(imagePath.string(), cv::ImreadModes::IMREAD_COLOR); // Read the file
+    if (!m_loadedImage.data) // Check for invalid input
     {
         cout << "Could not open or find the image " << imagePath << endl;
         return -1;
     }
 
-    //canvas.image = loadedImage;
+    //canvas.m_image = loadedImage;
 
     return 0;
 }

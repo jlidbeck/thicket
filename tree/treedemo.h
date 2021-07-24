@@ -20,33 +20,37 @@ namespace fs = std::filesystem;
 
 class TreeDemo
 {
-    mutable std::mutex demo_mutex;
-
 public:
-    cv::Mat loadedImage;
+    qtree *pTree = nullptr;
+
     qcanvas canvas;
 
-    cv::Size renderSizePreview  = cv::Size(200, 200);
-    cv::Size renderSizeHD       = cv::Size(2000, 1500);
-    cv::Size renderSize         = renderSizePreview;
+private:
+    mutable std::mutex m_mutex;
 
-    ThornTree defaultTree;
-    qtree *pTree = nullptr;
-    qtree *pBreedTree = nullptr;
+    cv::Size m_renderSizePreview  = cv::Size( 200,  200);
+    cv::Size m_renderSizeHD       = cv::Size(2000, 1500);
+    cv::Size m_renderSize         = m_renderSizePreview;
 
-    int minNodesProcessedPerFrame = 1;
-    int maxNodesProcessedPerFrame = 64;
+    ThornTree const m_defaultTree;
+
+    qtree *m_pBreedTree = nullptr;
+    
+    cv::Mat m_loadedImage;
+
+    int m_minNodesProcessedPerFrame = 1;
+    int m_maxNodesProcessedPerFrame = 64;
     bool m_stepping = false;
 
-    int presetIndex = 0;
-    float imagePadding = 0.1f;
+    int m_presetIndex = 0;
+    float m_imagePadding = 0.1f;
 
     // current model
-    double modelTime;
+    double m_modelTime;
     // current model run stats
-    int totalNodesProcessed;
-    std::chrono::steady_clock::time_point startTime;    // wall-clock time
-    double lastReportTime;                              // wall-clock time
+    int m_totalNodesProcessed;
+    std::chrono::steady_clock::time_point m_startTime;    // wall-clock time
+    double m_lastReportTime;                              // wall-clock time
 
     // commands
     bool m_restart = true;
@@ -54,11 +58,10 @@ public:
     bool m_quit = false;
 
     // current file pointer. should usually point to existing file "tree%04d"
-    int currentFileIndex = -1;
+    int m_currentFileIndex = -1;
 
-private:
-    std::future<void> s_run;
-    bool s_cancel = false;
+    std::future<void> m_currentRun;
+    bool m_cancel = false;
 
     void processCommands();
 
@@ -69,12 +72,13 @@ private:
 
 public:
     bool isWorkerTaskRunning() const;
+    bool isQuitting() const { return m_quit; }
 
-    std::condition_variable cv;
     std::function<int(int, int)> m_progressCallback;
 
     bool beginStepMode();
     bool endStepMode();
+    bool isStepping() const { return m_stepping; }
 
     void restart(bool randomize=false);
 

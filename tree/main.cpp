@@ -37,7 +37,7 @@ static void onMouse(int event, int x, int y, int, void*)
         the.pTree->removeNode(node.id);
     }
     the.pTree->redrawAll(the.canvas);
-    cv::imshow("Memtest", the.canvas.image); // Show our image inside it.
+    cv::imshow("Memtest", the.canvas.getImage()); // Show our image inside it.
 }
 
 #pragma endregion
@@ -45,18 +45,18 @@ static void onMouse(int event, int x, int y, int, void*)
 
 void redrawCallback()
 {
-    imshow("Memtest", the.canvas.image); // Show our image inside it.
+    imshow("Memtest", the.canvas.getImage()); // Show our image inside it.
     auto key = cv::waitKey(1);   // allows redraw
 }
 
 
 int main(int argc, char** argv)
 {
-    if (argc != 2)
-    {
-        cout << " Usage: display_image ImageToLoadAndDisplay" << endl;
-        return -1;
-    }
+    //if (argc != 2)
+    //{
+    //    cout << "Usage: " << argv[0] << " <Image FIle>" << endl;
+    //    return -1;
+    //}
 
     cv::namedWindow("Memtest", cv::WindowFlags::WINDOW_AUTOSIZE); // Create a window for display.
 
@@ -65,13 +65,13 @@ int main(int argc, char** argv)
     the.restart(true);
 
     //  Main console program loop
-    while (!the.m_quit)
+    while (!the.isQuitting())
     {
         redrawCallback();
 
         while (the.isWorkerTaskRunning() && !::_kbhit())
         {
-            cv::imshow("Memtest", the.canvas.image); // Show our image inside it.
+            cv::imshow("Memtest", the.canvas.getImage()); // Show our image inside it.
             cv::waitKey(1);
 
             using namespace std::chrono_literals;
@@ -83,7 +83,7 @@ int main(int argc, char** argv)
             the.showReport(0.0);
             cout << "Run complete.\n";
 
-            the.showCommands();
+            //the.showCommands();
         }
 
         //int key = cv::waitKey(-1);

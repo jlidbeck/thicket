@@ -801,7 +801,7 @@ public:
         //auto rc = getBoundingRect();
         //canvas.svgDocument.setDimensions(rc.width, rc.height);
 
-        canvas.svgDocument.save(svgPath.string());
+        canvas.getSVG().save(svgPath.string());
     }
 
     void drawNode(qcanvas &canvas, qnode const &node) override

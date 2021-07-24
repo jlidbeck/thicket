@@ -35,64 +35,72 @@ typedef cv::Matx<float, 4, 4> Matx44;
 
 class qcanvas
 {
-public:
-    Matx33 globalTransform;
-    cv::Mat image;
-    svg::Document svgDocument;
+    Matx33          m_globalTransform;
+    cv::Mat         m_image;
+    svg::Document   m_svgDocument;
 
+public:
 
     qcanvas() {
     }
 
+    cv::Mat const & getImage() const { return m_image; }
+
+    svg::Document const & getSVG() const { return m_svgDocument; }
+
     void create(cv::Mat im)
     {
-        image = im;
+        m_image = im;
     }
 
     void clear()
     {
-        image = 0;
-        svgDocument = svg::Document();
+        m_image = 0;
+        m_svgDocument = svg::Document();
 
         // TODO: use proper model bounds
         //auto rc = getBoundingRect();
         //svg::Dimensions dimensions(rc.width, rc.height);
         svg::Dimensions dimensions(200, 200);
 
-        svgDocument = svg::Document(svg::Layout(dimensions, svg::Layout::Origin::TopLeft)); // no flip, no scale
+        m_svgDocument = svg::Document(svg::Layout(dimensions, svg::Layout::Origin::TopLeft)); // no flip, no scale
 
         // Red image border.
         svg::Polygon border(svg::Stroke(1, svg::Color::Red));
         border << svg::Point(0, 0) << svg::Point(dimensions.width, 0)
             << svg::Point(dimensions.width, dimensions.height) << svg::Point(0, dimensions.height);
-        svgDocument << border;
+        m_svgDocument << border;
 
-        svgDocument << svg::Circle(svg::Point(80, 80), 20, svg::Fill(svg::Color(100, 200, 120)), svg::Stroke(1, svg::Color(200, 250, 150)));
+        m_svgDocument << svg::Circle(svg::Point(80, 80), 20, svg::Fill(svg::Color(100, 200, 120)), svg::Stroke(1, svg::Color(200, 250, 150)));
 
-        svgDocument << svg::Text(svg::Point(5, 77), "Simple SVG", svg::Color::Silver, svg::Font(10, "Franklin Gothic"));
+        m_svgDocument << svg::Text(svg::Point(5, 77), "Simple SVG", svg::Color::Silver, svg::Font(10, "Franklin Gothic"));
 
-        svgDocument << svg::Rectangle(svg::Point(70, 55), 20, 15, svg::Color::Yellow);
+        m_svgDocument << svg::Rectangle(svg::Point(70, 55), 20, 15, svg::Color::Yellow);
 
     }
 
-    // sets global transform map to map provided domain to image, centered, vertically flipped
-    void setScaleToFit(cv::Rect_<float> const &rect, float buffer)
+    // sets global transform map to map provided domain to m_image, centered, vertically flipped
+    void setTransformToFit(cv::Rect_<float> const &domain, float buffer)
     {
-        if (image.empty()) throw std::exception("Image is empty");
+        if (m_image.empty()) throw std::exception("Image is empty");
 
-        globalTransform = util::transform3x3::centerAndFit(rect, cv::Rect_<float>(0.0f, 0.0f, (float)image.cols, (float)image.rows), buffer, true);
+        m_globalTransform = util::transform3x3::centerAndFit(
+            domain, 
+            cv::Rect_<float>(0.0f, 0.0f, (float)m_image.cols, (float)m_image.rows), 
+            buffer, 
+            true);
     }
 
     cv::Point2f canvasToModel(cv::Point2f pt)
     {
-        Matx33 m = globalTransform.inv(cv::DecompTypes::DECOMP_LU);
+        Matx33 m = m_globalTransform.inv(cv::DecompTypes::DECOMP_LU);
         auto t = m * cv::Point3f(pt.x, pt.y, 1.0f);
         return cv::Point2f(t.x, t.y);
     }
 
     void fillPoly(std::vector<cv::Point2f> const &polygon, Matx33 const &transform, cv::Scalar color, int lineThickness, cv::Scalar lineColor)
     {
-        Matx33 m = globalTransform * transform;
+        Matx33 m = m_globalTransform * transform;
 
         vector<cv::Point2f> v;
         cv::transform(polygon, v, m.get_minor<2, 3>(0, 0));
@@ -102,12 +110,12 @@ public:
 
         if (lineThickness > 0)
         {
-            cv::fillPoly(image, pts, color, cv::LineTypes::LINE_8, 4);
-            cv::polylines(image, pts, true, lineColor, lineThickness, cv::LineTypes::LINE_AA, 4);
+            cv::fillPoly(m_image, pts, color, cv::LineTypes::LINE_8, 4);
+            cv::polylines(m_image, pts, true, lineColor, lineThickness, cv::LineTypes::LINE_AA, 4);
         }
         else
         {
-            cv::fillPoly(image, pts, color, cv::LineTypes::LINE_AA, 4);
+            cv::fillPoly(m_image, pts, color, cv::LineTypes::LINE_AA, 4);
         }
 
 
@@ -119,7 +127,7 @@ public:
         for (auto const& p : v)
             svgPolygon << svg::Point(p.x, p.y);
 
-        svgDocument << svgPolygon;
+        m_svgDocument << svgPolygon;
 
 
     }
@@ -380,8 +388,15 @@ public:
             domainShape = (j["bounds"]["shape"] == string("ellipse") ? DomainShape::ELLIPSE : DomainShape::RECT);
         }
 
-        ::from_json( j.at("polygon"), polygon );
-        ::from_json( j.at("transforms"), transforms );
+        if (j.contains("polygon"))
+        {
+            ::from_json(j.at("polygon"), polygon);
+        }
+
+        if (j.contains("transforms"))
+        {
+            ::from_json(j.at("transforms"), transforms);
+        }
 
         gestationRandomness = (j.contains("gestationRandomness") ? j.at("gestationRandomness").get<double>() : 0.0);
 

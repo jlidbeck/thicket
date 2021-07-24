@@ -218,7 +218,7 @@ BOOL CThicketDlg::OnInitDialog()
 	m_transformsList.InsertColumn(3, L"key", LVCFMT_LEFT, 100);
 	m_transformsList.InsertColumn(4, L"color", LVCFMT_LEFT | LVCFMT_FILL, 100);
 
-	demo.m_progressCallback = [&](int w, int l) {
+	m_demo.m_progressCallback = [&](int w, int l) {
 		::PostMessage(m_hWnd, WM_RUN_PROGRESS, w, l);
 		return 0; };
 
@@ -241,13 +241,13 @@ void CThicketDlg::OnDestroy()
 
 void CThicketDlg::OnFileOpenPrevious()
 {
-	demo.openPrevious();
+	m_demo.openPrevious();
 	UpdateData(0);
 }
 
 void CThicketDlg::OnFileSave()
 {
-	demo.save();
+	m_demo.save();
 }
 
 
@@ -266,11 +266,11 @@ BOOL CThicketDlg::PreTranslateMessage(MSG *pMsg)
 			return true;
 		}
 
-		std::lock_guard lock(demo_mutex);
+		std::lock_guard lock(m_mutex);
 
 		bool processed = false;
 		{
-			//std::unique_lock<std::mutex> lock(demo_mutex);
+			//std::unique_lock<std::mutex> lock(m_mutex);
 
 			BYTE scanCode = (pMsg->lParam >> 16) & 0xFF;
 			BYTE keyboardState[256];
@@ -278,8 +278,8 @@ BOOL CThicketDlg::PreTranslateMessage(MSG *pMsg)
 			WORD ascii = 0;
 			int len = ::ToAscii(virtKey, scanCode, keyboardState, &ascii, 0);
 			processed = (
-				(len > 0 && demo.processKey(ascii))
-				|| demo.processKey(virtKey << 16));
+				(len > 0 && m_demo.processKey(ascii))
+				|| m_demo.processKey(virtKey << 16));
 		}
 
 		if (processed)
@@ -287,7 +287,7 @@ BOOL CThicketDlg::PreTranslateMessage(MSG *pMsg)
 			Invalidate();
 			//UpdateWindow();
 
-			if (demo.m_quit)
+			if (m_demo.isQuitting())
 			{
 				EndDialog(IDOK);
 				return true;
@@ -299,7 +299,7 @@ BOOL CThicketDlg::PreTranslateMessage(MSG *pMsg)
 		{
 			//if (len)
 			//{
-			//	demo.showCommands();
+			//	m_demo.showCommands();
 			//}
 		}
 	}
@@ -310,29 +310,31 @@ BOOL CThicketDlg::PreTranslateMessage(MSG *pMsg)
 
 LRESULT CThicketDlg::OnRunProgress(WPARAM w, LPARAM l)
 {
-	std::lock_guard lock(demo_mutex);
+	std::lock_guard lock(m_mutex);
 
 	// update view
 
-	if (demo.pTree != nullptr)
+	if (m_demo.pTree != nullptr)
 	{
-		CString name(demo.pTree->name.c_str());
+		CString name(m_demo.pTree->name.c_str());
 		SetWindowText(name);
 
-		m_sortOrder.resize(demo.pTree->transforms.size());
+		m_sortOrder.resize(m_demo.pTree->transforms.size());
 		std::iota(m_sortOrder.begin(), m_sortOrder.end(), 0);
 		m_sortColumn = -1;
-		m_transformsList.SetItemCount(demo.pTree->transforms.size());
+		m_transformsList.SetItemCount((int)m_demo.pTree->transforms.size());
 
 		CString str;
-		str.Format(L"Q:%zu", demo.pTree->nodeQueue.size());
-		if (demo.m_randomize) str += " randomize";
-		if (demo.m_restart) str += " restart";
-		if (demo.m_stepping) str += " step";
-		if (demo.isWorkerTaskRunning()) str += " RUNNING";
+		str.Format(L"Q:%zu", m_demo.pTree->nodeQueue.size());
+		//if (m_demo.m_randomize) str += " randomize";
+		//if (m_demo.m_restart) str += " restart";
+		if (m_demo.isStepping()) str += " step";
+		if (m_demo.isWorkerTaskRunning()) str += " RUNNING";
 		SetDlgItemText(IDC_STATUS, str);
 
-		m_matView.SetImage(demo.canvas.image);
+		cv::Mat const & image = m_demo.canvas.getImage();
+		m_matView.SetWindowPos(nullptr, -1, -1, image.cols, image.rows, SWP_NOMOVE | SWP_NOZORDER | SWP_NOREDRAW);
+		m_matView.SetImage(image);
 	}
 	else
 	{
@@ -346,7 +348,7 @@ LRESULT CThicketDlg::OnRunProgress(WPARAM w, LPARAM l)
 
 void CThicketDlg::OnBnClickedRandomize()
 {
-	demo.restart(true);
+	m_demo.restart(true);
 	UpdateData(0);
 	Invalidate();
 
@@ -355,7 +357,7 @@ void CThicketDlg::OnBnClickedRandomize()
 
 void CThicketDlg::OnBnClickedStep()
 {
-	demo.beginStepMode();
+	m_demo.beginStepMode();
 	UpdateData(0);
 	Invalidate();
 }
@@ -363,7 +365,7 @@ void CThicketDlg::OnBnClickedStep()
 
 void CThicketDlg::OnBnClickedStart()
 {
-	demo.endStepMode();
+	m_demo.endStepMode();
 	UpdateData(0);
 	Invalidate();
 }
@@ -374,7 +376,7 @@ void CThicketDlg::OnBnClickedStart()
 
 void CThicketDlg::OnLvnGetdispinfoTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 {
-	std::lock_guard lock(demo_mutex);
+	std::lock_guard lock(m_mutex);
 
 	NMLVDISPINFO* pDispInfo = reinterpret_cast<NMLVDISPINFO*>(pNMHDR);
 	LV_ITEM* pItem = &pDispInfo->item;
@@ -386,13 +388,13 @@ void CThicketDlg::OnLvnGetdispinfoTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 
 	if (pItem->mask & LVIF_TEXT)
 	{
-		if (pItem->iItem < 0 || pItem->iItem >= demo.pTree->transforms.size())
+		if (pItem->iItem < 0 || pItem->iItem >= m_demo.pTree->transforms.size())
 		{
 			::_tcscpy_s(pItem->pszText, pItem->cchTextMax, L"");
 		}
 		else
 		{
-			auto const& t = demo.pTree->transforms[m_sortOrder[pItem->iItem]];
+			auto const& t = m_demo.pTree->transforms[m_sortOrder[pItem->iItem]];
 
 			switch (pItem->iSubItem)
 			{
@@ -400,7 +402,7 @@ void CThicketDlg::OnLvnGetdispinfoTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 				break;
 
 			case 1:
-				::wnsprintf(pItem->pszText, pItem->cchTextMax, L"%d", demo.pTree->transformCounts[t.transformMatrixKey]);
+				::wnsprintf(pItem->pszText, pItem->cchTextMax, L"%d", m_demo.pTree->transformCounts[t.transformMatrixKey]);
 				break;
 
 			case 2: // gestation
@@ -425,7 +427,7 @@ void CThicketDlg::OnLvnGetdispinfoTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 
 	if (pItem->mask & LVIF_IMAGE)
 	{
-		if (pItem->iItem < 0 || pItem->iItem >= demo.pTree->transforms.size())
+		if (pItem->iItem < 0 || pItem->iItem >= m_demo.pTree->transforms.size())
 		{
 		}
 		else
@@ -433,7 +435,7 @@ void CThicketDlg::OnLvnGetdispinfoTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 			//To enable check box, we have to enable state mask...
 			pItem->mask |= LVIF_STATE;
 			pItem->stateMask = LVIS_STATEIMAGEMASK;
-			auto const& t = demo.pTree->transforms[pItem->iItem];
+			auto const& t = m_demo.pTree->transforms[pItem->iItem];
 			// 0=no checkbox, 1=unchecked, 2=checked
 			pItem->state = INDEXTOSTATEIMAGEMASK(1 ? (t.gestation > 0 ? 2 : 1) : 0);
 		}
@@ -453,7 +455,7 @@ void CThicketDlg::OnLvnItemchangedTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 
 void CThicketDlg::OnNMCustomdrawTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 {
-	std::lock_guard lock(demo_mutex);
+	std::lock_guard lock(m_mutex);
 
 	LPNMCUSTOMDRAW pNMCD = reinterpret_cast<LPNMCUSTOMDRAW>(pNMHDR);
 	LPNMLVCUSTOMDRAW  lplvcd = (LPNMLVCUSTOMDRAW)pNMHDR;
@@ -463,13 +465,13 @@ void CThicketDlg::OnNMCustomdrawTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 	static COLORREF oldBkColor = 0xFFFFFF;
 
 	int item = (int)lplvcd->nmcd.dwItemSpec;
-	auto const *t = (item >= 0 && item < m_sortOrder.size() ? &demo.pTree->transforms[m_sortOrder[item]] : nullptr);
+	auto const *t = (item >= 0 && item < m_sortOrder.size() ? &m_demo.pTree->transforms[m_sortOrder[item]] : nullptr);
 
 	switch (pNMCD->dwDrawStage)
 	{
 	case CDDS_PREPAINT:
 		//if (lplvcd->iSubItem == 4)
-		if(demo.pTree && item<demo.pTree->transforms.size())
+		if(m_demo.pTree && item<m_demo.pTree->transforms.size())
 		{
 			float h, l, s, a;
 			if (t && t->colorTransform.asHlsSink(h, l, s, a))
@@ -526,7 +528,7 @@ void CThicketDlg::OnNMClickTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 	LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
 
 	int i = pNMLV->iItem;
-	if (i >= 0 && i < demo.pTree->transforms.size())
+	if (i >= 0 && i < m_demo.pTree->transforms.size())
 	{
 		CPoint pt;
 		if (::GetCursorPos(&pt))
@@ -567,12 +569,12 @@ void CThicketDlg::OnNMClickTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 
 void CThicketDlg::OnLvnColumnclickTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 {
-	std::lock_guard lock(demo_mutex);
+	std::lock_guard lock(m_mutex);
 
 	LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
 
-	if (!demo.pTree) return;
-	auto const &t = demo.pTree->transforms;
+	if (!m_demo.pTree) return;
+	auto const &t = m_demo.pTree->transforms;
 
 	if (pNMLV->iSubItem == m_sortColumn)
 	{
@@ -590,7 +592,7 @@ void CThicketDlg::OnLvnColumnclickTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 
 		case 1: // freq
 			std::sort(m_sortOrder.begin(), m_sortOrder.end(),
-				[&](size_t i1, size_t i2) { return demo.pTree->transformCounts[t[i1].transformMatrixKey] < demo.pTree->transformCounts[t[i2].transformMatrixKey]; });
+				[&](size_t i1, size_t i2) { return m_demo.pTree->transformCounts[t[i1].transformMatrixKey] < m_demo.pTree->transformCounts[t[i2].transformMatrixKey]; });
 			break;
 
 		case 2: // gestation
