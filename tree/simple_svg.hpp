@@ -95,6 +95,8 @@ namespace svg
         Dimensions(double combined = 0) : width(combined), height(combined) { }
         double width;
         double height;
+
+        bool empty() const { return !(width > 0 && height > 0); }
     };
 
     struct Point

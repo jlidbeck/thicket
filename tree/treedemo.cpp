@@ -672,8 +672,12 @@ int TreeDemo::save()
 
     // Write vector image to SVG file
 
-    auto svgPath = imagePath.replace_extension("svg");
-    canvas.getSVG().save(svgPath.string());
+    const svg::Document & svgDoc = canvas.getSVG();
+    if (!svgDoc.empty())
+    {
+        auto svgPath = imagePath.replace_extension("svg");
+        svgDoc.save(svgPath.string());
+    }
 
     if (pTree->name.empty())
     {
