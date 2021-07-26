@@ -52,32 +52,26 @@ public:
     void create(cv::Mat im)
     {
         m_image = im;
+
+        // Match SVG dimensions to pixel size
+        m_svgDocument = svg::Document(svg::Layout(svg::Dimensions(im.cols, im.rows), svg::Layout::Origin::TopLeft)); // no flip, no scale
     }
 
     void clear()
     {
+        // clear image to black
         m_image = 0;
-        m_svgDocument = svg::Document();
 
-        // TODO: use proper model bounds
-        //auto rc = getBoundingRect();
-        //svg::Dimensions dimensions(rc.width, rc.height);
-        svg::Dimensions dimensions(200, 200);
+        // clear vector data
+        m_svgDocument = svg::Document(svg::Layout(svg::Dimensions(m_image.cols, m_image.rows), svg::Layout::Origin::TopLeft)); // no flip, no scale
 
-        m_svgDocument = svg::Document(svg::Layout(dimensions, svg::Layout::Origin::TopLeft)); // no flip, no scale
-
-        // Red image border.
-        svg::Polygon border(svg::Stroke(1, svg::Color::Red));
-        border << svg::Point(0, 0) << svg::Point(dimensions.width, 0)
-            << svg::Point(dimensions.width, dimensions.height) << svg::Point(0, dimensions.height);
+        // draw image border
+        svg::Polygon border(svg::Stroke(1, svg::Color(55, 55, 55)));
+        border << svg::Point(0, 0) << svg::Point(m_image.cols, 0)
+            << svg::Point(m_image.cols, m_image.rows) << svg::Point(0, m_image.rows);
         m_svgDocument << border;
 
-        m_svgDocument << svg::Circle(svg::Point(80, 80), 20, svg::Fill(svg::Color(100, 200, 120)), svg::Stroke(1, svg::Color(200, 250, 150)));
-
-        m_svgDocument << svg::Text(svg::Point(5, 77), "Simple SVG", svg::Color::Silver, svg::Font(10, "Franklin Gothic"));
-
-        m_svgDocument << svg::Rectangle(svg::Point(70, 55), 20, 15, svg::Color::Yellow);
-
+        m_svgDocument << svg::Text(svg::Point(5, m_image.rows - 5), "Simple SVG", svg::Color(55, 55, 55), svg::Font(10, "Franklin Gothic"));
     }
 
     // sets global transform map to map provided domain to m_image, centered, vertically flipped
