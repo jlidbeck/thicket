@@ -91,9 +91,10 @@ public:
     int openPrevious();
     int openFile(int idx);
     int load(fs::path imagePath);
-    void findNextUnusedFileIndex();
-    void findPreviousFile();
-    void findNextFile();
+    void gotoNextUnusedFileIndex() { m_currentFileIndex = findMostRecentFileIndex() + 1; }
+    int findMostRecentFileIndex() const { return findPreviousFile(9999); }
+    int findPreviousFile(int idx) const;
+    int findNextFile(int idx) const;
 
     void showCommands();
     void showReport(double debounceSeconds);

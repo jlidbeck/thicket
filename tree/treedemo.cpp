@@ -264,18 +264,9 @@ int TreeDemo::openFile(int idx)
 
 const int MAX = 1000;
 
-//  finds most recent file and sets {m_currentFileIndex}.
-
-void TreeDemo::findNextUnusedFileIndex()
-{
-    m_currentFileIndex = MAX;
-    findPreviousFile();
-    ++m_currentFileIndex;
-}
-
-//  set m_currentFileIndex to the largest-numbered file less than m_currentFileIndex, or
+//  returns the largest-numbered file less than endIndex, or
 //  -1 if no saved files are found
-void TreeDemo::findPreviousFile()
+int TreeDemo::findPreviousFile(int endIndex) const
 {
     fs::path jsonPath;
 
@@ -286,31 +277,30 @@ void TreeDemo::findPreviousFile()
         int idx;
         if (sscanf_s(p.path().filename().string().c_str(), "tree%d.settings.json", &idx) == 1)
         {
-            if (idx > lastIdx && idx < m_currentFileIndex)
+            if (idx > lastIdx && idx < endIndex)
                 lastIdx = idx;
         }
     }
         
-    m_currentFileIndex = lastIdx;
+    return lastIdx;
 }
 
-//  set m_currentFileIndex to the next-highest-numbered existing file,
+//  returns the next-highest-numbered existing file greater than startIndex,
 //  or -1 if no higher-numbered files are found
-void TreeDemo::findNextFile()
+int TreeDemo::findNextFile(int startIndex) const
 {
     fs::path jsonPath;
     char filename[40];
-    for (int i = m_currentFileIndex+1; i < MAX; ++i)
+    for (int i = startIndex+1; i < MAX; ++i)
     {
         sprintf_s(filename, "tree%04d.settings.json", i);
         if (fs::exists(filename))
         {
-            m_currentFileIndex = i;
-            return;
+            return i;
         }
     }
 
-    m_currentFileIndex = -1;// nothing found
+    return -1;
 }
 
 bool TreeDemo::processKey(int key)
@@ -341,7 +331,13 @@ bool TreeDemo::processKey(int key)
     {
         if (m_currentFileIndex < 0)
         {
-            findPreviousFile();
+            m_currentFileIndex = findMostRecentFileIndex();
+        }
+
+        if (m_currentFileIndex < 0)
+        {
+            cout << "No files in current directory.\n";
+            return true;
         }
 
         int idx = -1;
@@ -659,7 +655,7 @@ int TreeDemo::save()
 {
     std::unique_lock<std::mutex> lock(m_mutex);
 
-    findNextUnusedFileIndex();
+    gotoNextUnusedFileIndex();
 
     cout << "Saving m_image and settings: " << m_currentFileIndex << endl;
 
@@ -698,9 +694,10 @@ int TreeDemo::save()
 int TreeDemo::openPrevious()
 {
     if (m_currentFileIndex <= 0)
-        m_currentFileIndex = 1000;
+        m_currentFileIndex = findMostRecentFileIndex();
+    else
+        m_currentFileIndex = findPreviousFile(m_currentFileIndex);
 
-    findPreviousFile();
     if (m_currentFileIndex < 0)
     {
         printf("No files found in current directory\n");
@@ -711,7 +708,7 @@ int TreeDemo::openPrevious()
 
 int TreeDemo::openNext()
 {
-    findNextFile();
+    m_currentFileIndex = findNextFile(m_currentFileIndex);
     if (m_currentFileIndex < 0)
     {
         printf("No files found in current directory\n");
