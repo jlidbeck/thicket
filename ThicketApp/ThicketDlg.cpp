@@ -504,19 +504,28 @@ void CThicketDlg::OnNMCustomdrawTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 
 	static COLORREF oldBkColor = 0xFFFFFF;
 
-	int item = (int)lplvcd->nmcd.dwItemSpec;
-	auto const *t = (item >= 0 && item < m_sortOrder.size() ? &m_demo.pTree->transforms[m_sortOrder[item]] : nullptr);
+	DWORD item = 0xFFFFFFFF;
+	if(pNMCD->dwDrawStage & CDDS_ITEM)
+		item = lplvcd->nmcd.dwItemSpec;
+
+	auto const *t = (m_demo.pTree != nullptr && item < m_sortOrder.size() 
+					? &m_demo.pTree->transforms[m_sortOrder[item]] 
+					: nullptr);
 
 	switch (pNMCD->dwDrawStage)
 	{
 	case CDDS_PREPAINT:
+		*pResult |= CDRF_NOTIFYITEMDRAW; // request item draw notify 
+		break;
+
+	case CDDS_ITEMPREPAINT:
 		//if (lplvcd->iSubItem == 4)
-		if(m_demo.pTree && item<m_demo.pTree->transforms.size())
+		if (m_demo.pTree && item < m_demo.pTree->transforms.size())
 		{
 			float h, l, s, a;
 			if (t && t->colorTransform.asHlsSink(h, l, s, a))
 			{
-				auto bgr = util::cvtColor(cv::Scalar(h, l, s), cv::ColorConversionCodes::COLOR_HLS2BGR);
+				auto bgr = 255.0 * util::cvtColor(cv::Scalar(h, l, s), cv::ColorConversionCodes::COLOR_HLS2BGR);
 				COLORREF color = RGB(bgr[2], bgr[1], bgr[0]);
 
 				CDC* pdc = CDC::FromHandle(pNMCD->hdc);
@@ -527,10 +536,6 @@ void CThicketDlg::OnNMCustomdrawTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 				pdc->FillSolidRect(&rc, 0xffffff);
 			}
 		}
-		*pResult |= CDRF_NOTIFYITEMDRAW; // request item draw notify 
-		break;
-
-	case CDDS_ITEMPREPAINT:
 		*pResult |= CDRF_NOTIFYSUBITEMDRAW; // request sub-item draw notify
 		break;
 
