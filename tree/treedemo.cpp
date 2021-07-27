@@ -127,20 +127,24 @@ int TreeDemo::processNodes()
         && (nodesProcessed < m_minNodesProcessedPerFrame || pTree->nodeQueue.top().beginTime <= m_modelTime)
         )
     {
-        //std::scoped_lock lock(m_mutex);
-
-        auto currentNode = pTree->nodeQueue.top();
-        if (!pTree->isViable(currentNode))
+        qnode currentNode;
+        
         {
-            pTree->nodeQueue.pop();
-            continue;
+            std::unique_lock lock(m_mutex);
+
+            currentNode = pTree->nodeQueue.top();
+            if (!pTree->isViable(currentNode))
+            {
+                pTree->nodeQueue.pop();
+                continue;
+            }
+
+            nodesProcessed++;
+            pTree->process();
+            m_modelTime = currentNode.beginTime + 1.0;
         }
 
         pTree->drawNode(canvas, currentNode);
-
-        nodesProcessed++;
-        pTree->process();
-        m_modelTime = currentNode.beginTime + 1.0;
     }
 
     m_totalNodesProcessed += nodesProcessed;
@@ -244,6 +248,9 @@ int TreeDemo::openFile(int idx)
         std::ifstream infile(filename);
         json j;
         infile >> j;
+
+        std::unique_lock lock(m_mutex);
+
         pTree = qtree::createTreeFromJson(j);
 
         cout << "Settings read from: " << filename << endl;
