@@ -696,7 +696,7 @@ void CThicketDlg::OnMatViewLButtonDown(UINT nFlags, CPoint canvasPoint)
 		{
 			vector<string> lineage;
 			m_demo.pTree->getLineage(node, lineage);
-			_stprintf_s(buf, _T("Node[%d]: "), node.id);
+			_stprintf_s(buf, _T(" Node[%d]: "), node.id);
 			sz += buf;
 			for (auto& tname : lineage)
 				sz += CString(tname.c_str()) + _T(" ");
@@ -721,19 +721,6 @@ void CThicketDlg::OnMatViewRButtonDown(UINT nFlags, CPoint canvasPoint)
 		std::unique_lock lock(m_demo.m_mutex);
 
 		std::vector<qnode> nodes;
-
-		// display info on node
-		m_demo.pTree->getNodesIntersecting(cv::Rect2f(pt, cv::Size2f(0, 0)), nodes);
-		for (auto& node : nodes)
-		{
-			vector<string> lineage;
-			m_demo.pTree->getLineage(node, lineage);
-			cout << "Node[" << node.id << "]:";
-			for (auto& tname : lineage)
-				cout << " " << tname;
-			cout << endl;
-		}
-		//return;
 
 		// delete block
 		m_demo.pTree->getNodesIntersecting(cv::Rect2f(pt.x - 5, pt.y - 5, 10, 10), nodes);
