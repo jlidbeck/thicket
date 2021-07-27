@@ -107,7 +107,7 @@ BEGIN_MESSAGE_MAP(CThicketDlg, CDialogEx)
 	ON_NOTIFY(LVN_COLUMNCLICK, IDC_TRANSFORMS, &CThicketDlg::OnLvnColumnclickTransforms)
 	ON_MESSAGE(WM_RUN_PROGRESS, &CThicketDlg::OnRunProgress)
 	ON_STN_CLICKED(IDC_IMAGE, &CThicketDlg::OnStnClickedImage)
-	ON_WM_ERASEBKGND()
+	//ON_WM_ERASEBKGND()
 END_MESSAGE_MAP()
 
 
