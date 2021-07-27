@@ -34,15 +34,18 @@ BOOL CMatView::OnEraseBkgnd(CDC* pDC)
 
 void CMatView::OnPaint()
 {
+    CPaintDC dc(this);
+
     if (m_mat.empty())
     {
-        //CDC *pdc = CDC::FromHandle(lpDrawItemStruct->hDC);
-        //pdc->FillSolidRect(&lpDrawItemStruct->rcItem, 0x0000FF);
+        CRect rc;
+        dc.GetBoundsRect(&rc, 0);
+        auto size = dc.GetViewportExt();
+        auto viewportOrigin = dc.GetViewportOrg();
+        dc.FillSolidRect(&rc, 0x555555);
     }
     else
     {
-        CPaintDC dc(this);
-
         BITMAPINFOHEADER bi = { sizeof(bi) };
         bi.biWidth = m_mat.cols;
         bi.biHeight = -m_mat.rows;

@@ -375,6 +375,7 @@ LRESULT CThicketDlg::OnRunProgress(WPARAM w, LPARAM l)
 		cv::Mat const & image = m_demo.canvas.getImage();
 		m_matView.SetWindowPos(nullptr, -1, -1, image.cols, image.rows, SWP_NOMOVE | SWP_NOZORDER | SWP_NOREDRAW);
 		m_matView.SetImage(image);
+		m_matView.UpdateWindow();
 	}
 	else
 	{
@@ -508,9 +509,9 @@ void CThicketDlg::OnNMCustomdrawTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 	if(pNMCD->dwDrawStage & CDDS_ITEM)
 		item = lplvcd->nmcd.dwItemSpec;
 
-	auto const *t = (m_demo.pTree != nullptr && item < m_sortOrder.size() 
+	auto const *t = (m_demo.pTree != nullptr && item < m_sortOrder.size()) 
 					? &m_demo.pTree->transforms[m_sortOrder[item]] 
-					: nullptr);
+					: nullptr;
 
 	switch (pNMCD->dwDrawStage)
 	{
@@ -520,7 +521,7 @@ void CThicketDlg::OnNMCustomdrawTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 
 	case CDDS_ITEMPREPAINT:
 		//if (lplvcd->iSubItem == 4)
-		if (m_demo.pTree && item < m_demo.pTree->transforms.size())
+		//if (t != nullptr)
 		{
 			float h, l, s, a;
 			if (t && t->colorTransform.asHlsSink(h, l, s, a))
