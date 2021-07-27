@@ -133,7 +133,7 @@ public:
 class qtransform
 {
 public:
-    string transformMatrixKey;
+    string key;
     Matx33 transformMatrix;
     ColorTransform colorTransform;
     double gestation;
@@ -149,7 +149,7 @@ public:
 
     qtransform(string key_, Matx33 const &transformMatrix_ = Matx33::eye(), ColorTransform const &colorTransform_ = ColorTransform(), double gestation_ = 1.0)
     {
-        transformMatrixKey = key_;
+        key = key_;
         transformMatrix = transformMatrix_;
         colorTransform = colorTransform_;
         gestation = gestation_;
@@ -188,8 +188,8 @@ inline void to_json(json &j, qtransform const &t)
 
     to_json(j["color"], t.colorTransform);
 
-    if (!t.transformMatrixKey.empty())
-        j["transformKey"] = t.transformMatrixKey;
+    if (!t.key.empty())
+        j["transformKey"] = t.key;
 
     to_json(j["transform"], t.transformMatrix);
 }
@@ -199,7 +199,7 @@ inline void from_json(json const &j, qtransform &t)
     t.gestation = j.at("gestation");
     from_json(j.at("color"),     t.colorTransform);
     from_json(j.at("transform"), t.transformMatrix);
-    t.transformMatrixKey = (j.contains("transformKey") ? j.at("transformKey") : "");
+    t.key = (j.contains("transformKey") ? j.at("transformKey") : "");
 }
 
 inline void to_json(json &j, std::vector<qtransform> const &transforms)
@@ -221,9 +221,9 @@ inline void from_json(json const &j, std::vector<qtransform> &transforms)
     {
         from_json(j[i], transforms[i]);
         // add unique names if they're undefined
-        if (transforms[i].transformMatrixKey.empty())
+        if (transforms[i].key.empty())
         {
-            transforms[i].transformMatrixKey = string("T") + std::to_string(i);
+            transforms[i].key = string("T") + std::to_string(i);
         }
     }
 }
@@ -534,7 +534,7 @@ public:
             for (auto it = unmatchedTransforms.cbegin(); it!=unmatchedTransforms.end(); ++it)
             {
 				auto thist = *it;
-                //if (thist.transformMatrixKey == othert.transformMatrixKey)
+                //if (thist.key == othert.key)
                 if(util::approximatelyEqual(thist.transformMatrix, othert.transformMatrix))
                 {
                     thist.gestation = (1.0 - a)*thist.gestation + a * othert.gestation;

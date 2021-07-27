@@ -44,7 +44,7 @@ void qtree::beget(qnode const & parent, qtransform const & t, qnode & child)
 {
     child.id = nextNodeId++;
     child.parentId = parent.id;
-    child.sourceTransform = t.transformMatrixKey;
+    child.sourceTransform = t.key;
 
     child.beginTime = parent.beginTime + t.gestation + (gestationRandomness>0.0 ? r(gestationRandomness) : 0.0);
 

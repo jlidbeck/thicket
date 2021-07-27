@@ -444,7 +444,7 @@ void CThicketDlg::OnLvnGetdispinfoTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 				break;
 
 			case 1:
-				::wnsprintf(pItem->pszText, pItem->cchTextMax, L"%d", m_demo.pTree->transformCounts[t.transformMatrixKey]);
+				::wnsprintf(pItem->pszText, pItem->cchTextMax, L"%d", m_demo.pTree->transformCounts[t.key]);
 				break;
 
 			case 2: // gestation
@@ -456,7 +456,7 @@ void CThicketDlg::OnLvnGetdispinfoTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 			}
 
 			case 3:
-				::wnsprintf(pItem->pszText, pItem->cchTextMax, CString(t.transformMatrixKey.c_str()));
+				::wnsprintf(pItem->pszText, pItem->cchTextMax, CString(t.key.c_str()));
 				break;
 
 			case 4:
@@ -639,7 +639,7 @@ void CThicketDlg::OnLvnColumnclickTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 
 		case 1: // freq
 			std::sort(m_sortOrder.begin(), m_sortOrder.end(),
-				[&](size_t i1, size_t i2) { return m_demo.pTree->transformCounts[t[i1].transformMatrixKey] < m_demo.pTree->transformCounts[t[i2].transformMatrixKey]; });
+				[&](size_t i1, size_t i2) { return m_demo.pTree->transformCounts[t[i1].key] < m_demo.pTree->transformCounts[t[i2].key]; });
 			break;
 
 		case 2: // gestation
@@ -649,7 +649,7 @@ void CThicketDlg::OnLvnColumnclickTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 
 		case 3: // key
 			std::sort(m_sortOrder.begin(), m_sortOrder.end(),
-				[&](size_t i1, size_t i2) { return t[i1].transformMatrixKey < t[i2].transformMatrixKey; });
+				[&](size_t i1, size_t i2) { return t[i1].key < t[i2].key; });
 		}
 	}
 

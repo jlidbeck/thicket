@@ -530,9 +530,9 @@ bool TreeDemo::processKey(int key)
         {
             auto const &t = pTree->transforms[i];
             cout << std::setw(2) << i
-                    << ":" << std::setw(5) << pTree->transformCounts[t.transformMatrixKey] 
+                    << ":" << std::setw(5) << pTree->transformCounts[t.key] 
                     << " " << std::setw(4) << std::setprecision(3) << t.gestation
-                    << "  " << t.transformMatrixKey 
+                    << "  " << t.key 
                     << "  " << t.colorTransform.description() << endl;
         }
         return true;
@@ -555,7 +555,7 @@ bool TreeDemo::processKey(int key)
         int count = pTree->transforms.size();
         for (auto it = pTree->transforms.begin(); it != pTree->transforms.end(); )
         {
-            if (pTree->transformCounts[it->transformMatrixKey] == 0)
+            if (pTree->transformCounts[it->key] == 0)
             {
                 it = pTree->transforms.erase(it);
             }
