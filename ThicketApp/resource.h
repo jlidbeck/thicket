@@ -14,7 +14,6 @@
 #define IDC_LIST1                       1003
 #define IDC_TRANSFORMS                  1003
 #define IDC_STATUS                      1004
-#define IDC_STATUS2                     1005
 #define IDC_CORNERGRIP                  1006
 #define IDC_IMAGE                       1007
 #define ID_FILE_OPENPREVIOUS            32772

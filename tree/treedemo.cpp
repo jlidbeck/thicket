@@ -107,7 +107,7 @@ bool TreeDemo::endStepMode()
 
 void TreeDemo::sendProgressUpdate()
 {
-    if (!!m_progressCallback)
+    if (m_progressCallback != nullptr)
     {
         //std::unique_lock<std::mutex> lock(m_mutex);
         m_quit |= (0 != m_progressCallback(1, m_totalNodesProcessed));
