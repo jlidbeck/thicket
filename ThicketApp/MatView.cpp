@@ -16,6 +16,7 @@ BEGIN_MESSAGE_MAP(CMatView, CStatic)
     ON_WM_PAINT()
     ON_WM_CTLCOLOR_REFLECT()
     ON_WM_LBUTTONDOWN()
+    ON_WM_RBUTTONDOWN()
 END_MESSAGE_MAP()
 
 
@@ -138,4 +139,10 @@ void CMatView::OnLButtonDown(UINT nFlags, CPoint point)
 {
     if (m_onLButtonDown != nullptr)
         m_onLButtonDown(nFlags, point);
+}
+
+void CMatView::OnRButtonDown(UINT nFlags, CPoint point)
+{
+    if (m_onRButtonDown != nullptr)
+        m_onRButtonDown(nFlags, point);
 }

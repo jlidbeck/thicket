@@ -9,6 +9,7 @@ class CMatView : public CStatic
     cv::Mat m_mat;
 public:
     std::function<void(UINT, CPoint)> m_onLButtonDown = nullptr;
+    std::function<void(UINT, CPoint)> m_onRButtonDown = nullptr;
 
     void SetImage(cv::Mat const& mat);
 
@@ -19,5 +20,6 @@ private:
     afx_msg BOOL OnEraseBkgnd(CDC* pDC);
     virtual void DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct) override;
     afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+    afx_msg void OnRButtonDown(UINT nFlags, CPoint point);
 };
 

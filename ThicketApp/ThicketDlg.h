@@ -44,6 +44,7 @@ protected:
 	afx_msg LRESULT OnRunProgress(WPARAM, LPARAM);
 
 	void OnMatViewLButtonDown(UINT nFlags, CPoint point);
+	void OnMatViewRButtonDown(UINT nFlags, CPoint point);
 
 	// Generated message map functions
 	DECLARE_MESSAGE_MAP()

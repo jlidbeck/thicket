@@ -225,6 +225,7 @@ BOOL CThicketDlg::OnInitDialog()
 		return 0; };
 
 	m_matView.m_onLButtonDown = [&](UINT nFlags, CPoint point) { OnMatViewLButtonDown(nFlags, point); };
+	m_matView.m_onRButtonDown = [&](UINT nFlags, CPoint point) { OnMatViewRButtonDown(nFlags, point); };
 
 	CRect rc;
 	GetWindowRect(&rc);
@@ -680,28 +681,68 @@ void CThicketDlg::OnMatViewLButtonDown(UINT nFlags, CPoint canvasPoint)
 
 	auto pt = m_demo.canvas.canvasToModel(cv::Point(canvasPoint.x, canvasPoint.y));
 
-	std::vector<qnode> nodes;
+	CString sz;
+	sz.Format(_T("(%.3f, %.3f)"), pt.x, pt.y);
 
-	// display info on node
-	m_demo.pTree->getNodesIntersecting(cv::Rect2f(pt, cv::Size2f(0, 0)), nodes);
-	for (auto& node : nodes)
 	{
-		vector<string> lineage;
-		m_demo.pTree->getLineage(node, lineage);
-		cout << "Node[" << node.id << "]:";
-		for (auto& tname : lineage)
-			cout << " " << tname;
-		cout << endl;
-	}
-	//return;
+		std::unique_lock lock(m_demo.m_mutex);
 
-	// delete block
-	m_demo.pTree->getNodesIntersecting(cv::Rect2f(pt.x-5, pt.y-5, 10, 10), nodes);
-	for (auto& node : nodes)
+		std::vector<qnode> nodes;
+		TCHAR buf[40];
+
+		// display info on node
+		m_demo.pTree->getNodesIntersecting(cv::Rect2f(pt, cv::Size2f(0, 0)), nodes);
+		for (auto& node : nodes)
+		{
+			vector<string> lineage;
+			m_demo.pTree->getLineage(node, lineage);
+			_stprintf_s(buf, _T("Node[%d]: "), node.id);
+			sz += buf;
+			for (auto& tname : lineage)
+				sz += CString(tname.c_str()) + _T(" ");
+		}
+
+	}	// lock
+
+	SetDlgItemText(IDC_STATUS, sz);
+
+	m_matView.Invalidate();
+	m_matView.UpdateWindow();
+}
+
+void CThicketDlg::OnMatViewRButtonDown(UINT nFlags, CPoint canvasPoint)
+{
+	if (!m_demo.pTree)
+		return;
+
+	auto pt = m_demo.canvas.canvasToModel(cv::Point(canvasPoint.x, canvasPoint.y));
+
 	{
-		m_demo.pTree->removeNode(node.id);
-	}
-	m_demo.pTree->redrawAll(m_demo.canvas);
+		std::unique_lock lock(m_demo.m_mutex);
+
+		std::vector<qnode> nodes;
+
+		// display info on node
+		m_demo.pTree->getNodesIntersecting(cv::Rect2f(pt, cv::Size2f(0, 0)), nodes);
+		for (auto& node : nodes)
+		{
+			vector<string> lineage;
+			m_demo.pTree->getLineage(node, lineage);
+			cout << "Node[" << node.id << "]:";
+			for (auto& tname : lineage)
+				cout << " " << tname;
+			cout << endl;
+		}
+		//return;
+
+		// delete block
+		m_demo.pTree->getNodesIntersecting(cv::Rect2f(pt.x - 5, pt.y - 5, 10, 10), nodes);
+		for (auto& node : nodes)
+		{
+			m_demo.pTree->removeNode(node.id);
+		}
+		m_demo.pTree->redrawAll(m_demo.canvas);
+	}	// lock
 
 	m_matView.Invalidate();
 	m_matView.UpdateWindow();
