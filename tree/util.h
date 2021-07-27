@@ -79,7 +79,7 @@ namespace util
 
         // Matx
 
-        //  Create matrix to apply first scaling, then translation, then rotation about the origin
+        //  2D rotation about the origin
         template<typename _Tp>
         cv::Matx<_Tp, 3, 3> getRotate(_Tp angle)
         {
@@ -109,8 +109,9 @@ namespace util
                                         0,     0, 1 );
         }
 
-        //  Create transform matrix to map two points using rotation and scaling
-        //  Generates orthogonal 3x3 transform matrix that maps src0 to dest0 and src1 to dest1, with a positive or zero determinant
+        //  Create transform matrix to map two source points to two target points using *rotation* and scaling.
+        //  Generates an orthogonal 3x3 transform matrix that maps src0 to dest0 and src1 to dest1, 
+        //  with a positive or zero determinant.
         template<typename _Tp>
         cv::Matx<_Tp, 3, 3> getEdgeMap(cv::Point_<_Tp> src0, cv::Point_<_Tp> src1, cv::Point_<_Tp> dest0, cv::Point_<_Tp> dest1)
         {
@@ -119,18 +120,19 @@ namespace util
             auto srcnorm = srcv.ddot(srcv);
             _Tp sc = (_Tp)(srcv.ddot( destv) / srcnorm);
             _Tp ss = (_Tp)(srcv.cross(destv) / srcnorm);
-            auto scrot = cv::Matx<_Tp, 3, 3>(
+            auto mScaleRotate = cv::Matx<_Tp, 3, 3>(
                 sc, -ss, 0,
                 ss,  sc, 0,
                 0,   0,  1 );
             return getTranslate(dest0.x, dest0.y)
-                * scrot
+                * mScaleRotate
                 * getTranslate(-src0.x, -src0.y);
         }
 
 
-        //  Create transform to map two points using reflection and scaling
-        //  Generates orthogonal 3x3 transform matrix that maps src0 to dest0 and src1 to dest1, with a negative or zero determinant
+        //  Create transform matrix to map two source points to two target points using *reflection* and scaling.
+        //  Generates an orthogonal 3x3 transform matrix that maps src0 to dest0 and src1 to dest1, 
+        //  with a negative or zero determinant.
         template<typename _Tp>
         cv::Matx<_Tp, 3, 3> getMirroredEdgeMap(cv::Point_<_Tp> src0, cv::Point_<_Tp> src1, cv::Point_<_Tp> dest0, cv::Point_<_Tp> dest1)
         {
@@ -139,16 +141,20 @@ namespace util
             auto srcnorm = srcv.dot(srcv);
             auto sc = (srcv.x*destv.x - srcv.y*destv.y) / srcnorm;
             auto ss = (srcv.x*destv.y + srcv.y*destv.x) / srcnorm;
-            auto scrot = cv::Matx<_Tp, 3, 3>(
-                sc, ss, 0,
+            auto mScaleMirror = cv::Matx<_Tp, 3, 3>(
+                sc,  ss, 0,
                 ss, -sc, 0,
-                0, 0, 1);
+                0,   0,  1 );
             return getTranslate(dest0.x, dest0.y)
-                * scrot
+                * mScaleMirror
                 * getTranslate(-src0.x, -src0.y);
         }
 
 
+        //  Create 2D transform matrix to map {src} rectangle to fit within {dest},
+        //  keeping the scale as large as possible while maintaining aspect ratio.
+        //  buffer: relative to {src} coords, minimum extra padding around all sides of {src}.
+        //  flipVertical: if set, {src} orientation is flipped.
 		template<typename _Tp>
 		cv::Matx<_Tp, 3, 3> centerAndFit(cv::Rect_<_Tp> const& src, cv::Rect_<_Tp> const &dest, _Tp buffer, bool flipVertical)
 		{
@@ -157,9 +163,9 @@ namespace util
 
 			// scale, flip vertical, offset
 
-			// 1. translate rect to centered at origin
-			// 2. scale rect
-			// 3. translate rect to centered on image
+			// 1. translate {src} to centered at origin
+			// 2. scale {src}
+			// 3. translate {src} to be centered on {dest}
 			auto a = util::transform3x3::getScaleTranslate(1.0f, -(src.x + src.width / 2.0f), -(src.y + src.height / 2.0f));
             auto b = util::transform3x3::getScale(scale, flipVertical ? -scale : scale);
             auto c = util::transform3x3::getScaleTranslate(1.0f, dest.x + dest.width / 2.0f, dest.y + dest.height / 2.0f);
@@ -191,6 +197,8 @@ namespace util
         return cv::Rect_<_Tp>(l, t, r - l, b - t);
     }
 
+
+    //  Expands {rect} to contain all points in {pts}.
     template<typename _Tp>
     cv::Rect_<_Tp> getBoundingRect(cv::Rect_<_Tp> rect, std::vector<cv::Point_<_Tp> > const &pts)
     {
@@ -252,6 +260,8 @@ namespace util
     }
 
 
+    //  Create a 3D transform matrix whose fixed point is {color}.
+    //  As long as 0<{a}<=1, points transformed by this matrix move toward {color}.
     template<typename _Tp>
     cv::Matx<_Tp, 4, 4> colorSink(cv::Matx<_Tp, 4, 1> const &color, _Tp a)
     {
@@ -262,7 +272,9 @@ namespace util
             0, 0, 0, 1);
     }
 
-    // since Scalar is derived from Matx<_tp, 4, 1>, this extra polymorphism shouldn't be necessary
+    //  Create a 3D transform matrix whose fixed point is {color}.
+    //  As long as 0<{a}<=1, points transformed by this matrix move toward {color}.
+    //  Since Scalar is derived from Matx<_tp, 4, 1>, this extra polymorphism shouldn't be necessary
     template<typename _Tp>
     cv::Matx<_Tp, 4, 4> colorSink(cv::Scalar_<_Tp> const &color, _Tp a)
     {
@@ -273,6 +285,8 @@ namespace util
             0, 0, 0, 1);
     }
 
+    //  Create a 3D transform matrix whose fixed point is (b, g, r).
+    //  As long as 0<{a}<=1, points transformed by this matrix move toward the fixed point.
     template<typename _Tp>
     cv::Matx<_Tp, 4, 4> colorSink(_Tp b, _Tp g, _Tp r, _Tp a)
     {
