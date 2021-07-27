@@ -407,6 +407,7 @@ bool TreeDemo::processKey(int key)
     case '0':   // recenter model in domain
         pTree->domain.x = -0.5f * pTree->domain.width;
         pTree->domain.y = -0.5f * pTree->domain.height;
+        printf("** recenter domain: corner at %.3f x %.3f **\n", pTree->domain.x, pTree->domain.y);
         restart();
         return true;
 
@@ -426,6 +427,7 @@ bool TreeDemo::processKey(int key)
             pTree->domain.width = pTree->domain.height;
         else
             pTree->domain.height = pTree->domain.width;
+        printf("** cycle aspect ratio: %.3f x %.3f **\n", pTree->domain.width, pTree->domain.height);
         restart();
         return true;
     }
@@ -436,6 +438,7 @@ bool TreeDemo::processKey(int key)
         case qtree::DomainShape::RECT: pTree->domainShape = qtree::DomainShape::ELLIPSE; restart(); return true;
         case qtree::DomainShape::ELLIPSE: pTree->domainShape = qtree::DomainShape::RECT; restart(); return true;
         }
+        printf("** cycle domain shape: %d **\n", pTree->domainShape);
         return true;
                 
     case 0x250000:  // left (VK_LEFT << 16)

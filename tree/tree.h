@@ -211,6 +211,11 @@ inline void to_json(json &j, std::vector<qtransform> const &transforms)
 
 inline void from_json(json const &j, std::vector<qtransform> &transforms)
 {
+    if (j == nullptr || j.empty())
+    {
+        throw std::exception("No transforms found: JSON is empty");
+    }
+
     transforms.resize(j.size());
     for (int i = 0; i < j.size(); ++i)
     {

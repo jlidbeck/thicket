@@ -137,7 +137,7 @@ namespace svg
     {
         enum Origin { TopLeft, BottomLeft, TopRight, BottomRight };
 
-        Layout(Dimensions const & dimensions = Dimensions(400, 300), Origin origin = BottomLeft,
+        Layout(Dimensions const & dimensions, Origin origin = BottomLeft,
             double scale = 1, Point const & origin_offset = Point(0, 0))
             : dimensions(dimensions), scale(scale), origin(origin), origin_offset(origin_offset) { }
         Dimensions dimensions;
@@ -587,8 +587,20 @@ namespace svg
         Document(Layout const & layout = Layout(Dimensions(-1,-1)))
             : layout(layout) { }
 
+        bool empty() const { return const_cast<std::ostringstream&>(body_nodes_str).tellp() == 0; }
+
+        void clear() { body_nodes_str.str(""); body_nodes_str.clear(); }
+
+        void setDimensions(Dimensions const & dimensions)
+        {
+            layout.dimensions = dimensions;
+        }
+
         Document & operator<<(Shape const & shape)
         {
+            if (layout.dimensions.empty())
+                throw(std::exception("Invalid layout dimensions"));
+
             shape.toStream(body_nodes_str, layout);
             return *this;
         }
@@ -604,6 +616,9 @@ namespace svg
 
         bool save(std::string file_name) const
         {
+            if (layout.dimensions.empty())
+                throw(std::exception("Invalid layout dimensions"));
+
             std::ofstream ofs(file_name.c_str());
             if (!ofs.good())
                 return false;
@@ -620,6 +635,9 @@ namespace svg
 
     inline std::ostream& operator << (std::ostream &ss, Document const &doc)
     {
+        if (doc.layout.dimensions.empty())
+            throw(std::exception("Invalid layout dimensions"));
+
         ss << "<?xml " << attribute("version", "1.0") << attribute("standalone", "no")
             << "?>\n<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" "
             << "\"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n<svg "

@@ -281,6 +281,9 @@ public:
     {
         vector<cv::Point2f> v;
 
+        if (polygon.empty())
+            throw(std::exception("Empty polygon"));
+
         // first, transform node polygon to model coordinates
         cv::transform(polygon, v, node.globalTransform.get_minor<2, 3>(0, 0));
 
