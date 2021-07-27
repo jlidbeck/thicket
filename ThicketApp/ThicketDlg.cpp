@@ -307,11 +307,11 @@ BOOL CThicketDlg::PreTranslateMessage(MSG *pMsg)
 			return true;
 		}
 
-		std::lock_guard lock(m_mutex);
+		std::scoped_lock lock(m_mutex);
 
 		bool processed = false;
 		{
-			//std::unique_lock<std::mutex> lock(m_mutex);
+			//std::scoped_lock lock(m_mutex);
 
 			BYTE scanCode = (pMsg->lParam >> 16) & 0xFF;
 			BYTE keyboardState[256];
@@ -351,7 +351,7 @@ BOOL CThicketDlg::PreTranslateMessage(MSG *pMsg)
 
 LRESULT CThicketDlg::OnRunProgress(WPARAM w, LPARAM l)
 {
-	std::lock_guard lock(m_mutex);
+	std::scoped_lock lock(m_mutex);
 
 	// update view
 
@@ -418,7 +418,7 @@ void CThicketDlg::OnBnClickedStart()
 
 void CThicketDlg::OnLvnGetdispinfoTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 {
-	std::lock_guard lock(m_mutex);
+	std::scoped_lock lock(m_mutex);
 
 	NMLVDISPINFO* pDispInfo = reinterpret_cast<NMLVDISPINFO*>(pNMHDR);
 	LV_ITEM* pItem = &pDispInfo->item;
@@ -497,7 +497,7 @@ void CThicketDlg::OnLvnItemchangedTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 
 void CThicketDlg::OnNMCustomdrawTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 {
-	std::lock_guard lock(m_mutex);
+	std::scoped_lock lock(m_mutex);
 
 	LPNMCUSTOMDRAW pNMCD = reinterpret_cast<LPNMCUSTOMDRAW>(pNMHDR);
 	LPNMLVCUSTOMDRAW  lplvcd = (LPNMLVCUSTOMDRAW)pNMHDR;
@@ -616,7 +616,7 @@ void CThicketDlg::OnNMClickTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 
 void CThicketDlg::OnLvnColumnclickTransforms(NMHDR *pNMHDR, LRESULT *pResult)
 {
-	std::lock_guard lock(m_mutex);
+	std::scoped_lock lock(m_mutex);
 
 	LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
 
@@ -685,7 +685,7 @@ void CThicketDlg::OnMatViewLButtonDown(UINT nFlags, CPoint canvasPoint)
 	sz.Format(_T("(%.3f, %.3f)"), pt.x, pt.y);
 
 	{
-		std::unique_lock lock(m_demo.m_mutex);
+		std::scoped_lock lock(m_demo.m_mutex);
 
 		std::vector<qnode> nodes;
 		TCHAR buf[40];
@@ -718,7 +718,7 @@ void CThicketDlg::OnMatViewRButtonDown(UINT nFlags, CPoint canvasPoint)
 	auto pt = m_demo.canvas.canvasToModel(cv::Point(canvasPoint.x, canvasPoint.y));
 
 	{
-		std::unique_lock lock(m_demo.m_mutex);
+		std::scoped_lock lock(m_demo.m_mutex);
 
 		std::vector<qnode> nodes;
 

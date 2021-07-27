@@ -21,12 +21,14 @@ namespace fs = std::filesystem;
 class TreeDemo
 {
 public:
+    // model
     std::shared_ptr<qtree> pTree;
 
     qcanvas canvas;
 
-private:
+    // model mutex
     mutable std::mutex m_mutex;
+private:
 
     cv::Size m_renderSizePreview  = cv::Size( 200,  200);
     cv::Size m_renderSizeHD       = cv::Size(2000, 1500);
