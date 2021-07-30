@@ -234,22 +234,49 @@ void TreeDemo::showReport(double debounceSeconds)
     cout << std::setw(8) << curTime << ": " << m_totalNodesProcessed << " nodes processed (" << ((double)m_totalNodesProcessed) / curTime << "/s)" << endl;
 }
 
-int TreeDemo::openFile(int idx)
+int TreeDemo::openSettingsFile(int idx)
 {
     char filename[50];
     sprintf_s(filename, "tree%04d.settings.json", idx);
-    cout << "Opening " << filename << "...\n";
+    return openSettingsFile(fs::path(filename));
+}
 
-    try {
-        std::ifstream infile(filename);
+int TreeDemo::openSettingsFile(fs::path path)
+{
+    //  If path indicates a PNG, look for the corresponding settings file
+    auto x = path.extension().native();
+    if (path.extension().native().compare(fs::path(L".png").native()) == 0)
+    {
+        path.replace_extension("settings.json");
+    }
+
+    cout << "Opening " << path << "...\n";
+
+    try 
+    {
+        std::ifstream infile(path);
+
+        if (!infile)
+        {
+            cout << "Unable to open " << fs::absolute(path) << endl;
+            return -1;
+        }
+
         json j;
         infile >> j;
         pTree = qtree::createTreeFromJson(j);
 
-        cout << "Settings read from: " << filename << endl;
+        cout << "Settings read from: " << path << endl;
 
         if (pTree->name.empty())
-            pTree->name = std::to_string(idx);
+        {
+            //  set name attribute to default: filename without .settings.json
+            while (path.has_extension())
+            {
+                path = path.stem();
+            }
+            pTree->name = path.generic_string();
+        }
 
         restart();
 
@@ -257,7 +284,7 @@ int TreeDemo::openFile(int idx)
     }
     catch (std::exception &ex)
     {
-        cout << "Failed to open " << filename << ":\n" << ex.what() << endl;
+        cout << "Failed to read settings from " << fs::absolute(path) << "\n" << ex.what() << endl;
     }
     return -1;
 }
@@ -346,7 +373,7 @@ bool TreeDemo::processKey(int key)
         {
             if (idx < 0)
                 idx = m_currentFileIndex;
-            openFile(idx);
+            openSettingsFile(idx);
         }
         return true;
     }
@@ -703,7 +730,7 @@ int TreeDemo::openPrevious()
         printf("No files found in current directory\n");
         return -1;
     }
-    return openFile(m_currentFileIndex);
+    return openSettingsFile(m_currentFileIndex);
 }
 
 int TreeDemo::openNext()
@@ -714,7 +741,7 @@ int TreeDemo::openNext()
         printf("No files found in current directory\n");
         return -1;
     }
-    return openFile(m_currentFileIndex);
+    return openSettingsFile(m_currentFileIndex);
 }
 
 int TreeDemo::load(fs::path imagePath)

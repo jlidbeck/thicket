@@ -49,6 +49,8 @@ protected:
     afx_msg void OnDestroy();
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 	afx_msg void OnFileOpenPrevious();
+	afx_msg void OnFileOpen();
+	afx_msg void OnFileOpenImage();
 	afx_msg void OnFileSave();
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();

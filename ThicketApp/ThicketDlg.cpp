@@ -92,6 +92,8 @@ BEGIN_MESSAGE_MAP(CThicketDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_COMMAND(ID_FILE_OPENPREVIOUS, OnFileOpenPrevious)
+	ON_COMMAND(ID_FILE_OPEN, OnFileOpen)
+	ON_COMMAND(ID_FILE_OPENIMAGE, OnFileOpenImage)
 	ON_WM_SIZE()
 	ON_WM_DESTROY()
 	ON_WM_KEYDOWN()
@@ -242,6 +244,61 @@ void CThicketDlg::OnDestroy()
 void CThicketDlg::OnFileOpenPrevious()
 {
 	m_demo.openPrevious();
+	UpdateData(0);
+}
+
+void CThicketDlg::OnFileOpen()
+{
+	static CFileDialog dlg(TRUE, L"settings.json", 0, OFN_ALLOWMULTISELECT, L"settings.json|*.settings.json|PNG|*.png|All Files|*.*||\0", this);
+	static CString sz;
+	
+	fs::path curPath = fs::absolute(L".");
+	dlg.m_ofn.lpstrInitialDir = curPath.c_str();
+	dlg.m_ofn.lpstrFile = sz.GetBufferSetLength(100 * (MAX_PATH + 1) + 1);
+	dlg.m_ofn.nMaxFile = sz.GetAllocLength();
+	dlg.m_ofn.Flags |= OFN_ALLOWMULTISELECT;
+
+	fs::path path;
+
+	if (IDOK == dlg.DoModal())
+	{
+		POSITION pos = dlg.GetStartPosition();
+		while (pos)
+		{
+			CString szPath = dlg.GetNextPathName(pos);
+			path = (LPCTSTR)szPath;
+		}
+		m_demo.openSettingsFile(path);
+	}
+
+	UpdateData(0);
+}
+
+void CThicketDlg::OnFileOpenImage()
+{
+	static CFileDialog dlg(TRUE, L"settings.json", 0, OFN_ALLOWMULTISELECT, L"JPG (*.jpg,*.jpeg)|*.jpg;*.jpeg|TIFF (*.tif,*.tiff)|*.tif;*.tiff|All (*.*)|*.*||\0", this);
+	static CString sz;
+	
+	fs::path curPath = fs::absolute(L".");
+	dlg.m_ofn.lpstrInitialDir = curPath.c_str();
+	dlg.m_ofn.lpstrFile = sz.GetBufferSetLength(100 * (MAX_PATH + 1) + 1);
+	dlg.m_ofn.nMaxFile = sz.GetAllocLength();
+	dlg.m_ofn.Flags |= OFN_ALLOWMULTISELECT;
+
+
+	fs::path path;
+
+	if (IDOK == dlg.DoModal())
+	{
+		POSITION pos = dlg.GetStartPosition();
+		while (pos)
+		{
+			CString szPath = dlg.GetNextPathName(pos);
+			path = (LPCTSTR)szPath;
+		}
+	}
+
+	m_demo.openSettingsFile(path);
 	UpdateData(0);
 }
 

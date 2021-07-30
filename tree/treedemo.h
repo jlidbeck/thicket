@@ -89,7 +89,8 @@ public:
     int save();
     int openNext();
     int openPrevious();
-    int openFile(int idx);
+    int openSettingsFile(int idx);
+    int openSettingsFile(fs::path settingsPath);
     int load(fs::path imagePath);
     void gotoNextUnusedFileIndex() { m_currentFileIndex = findMostRecentFileIndex() + 1; }
     int findMostRecentFileIndex() const { return findPreviousFile(9999); }
