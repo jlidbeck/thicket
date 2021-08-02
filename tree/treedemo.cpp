@@ -9,16 +9,30 @@ using std::cin;
 using std::endl;
 
 
-bool TreeDemo::isWorkerTaskRunning() const 
+TreeDemo::~TreeDemo()
+{
+    std::lock_guard lock(m_mutex);
+    endWorkerTask();
+}
+
+
+bool TreeDemo::isValid() const
+{
+    std::lock_guard lock(m_mutex);
+
+    return (pTree != nullptr && m_currentRun.valid() && !m_currentRun._Is_ready());
+}
+
+bool TreeDemo::isWorkerTaskRunning() const
 { 
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::lock_guard lock(m_mutex);
 
     return (m_currentRun.valid() && !m_currentRun._Is_ready());
 }
 
 void TreeDemo::endWorkerTask()
 {
-    //std::unique_lock<std::mutex> lock(m_mutex);
+    //std::lock_guard lock(m_mutex);
 
     if (m_currentRun.valid())
     {
@@ -37,7 +51,7 @@ void TreeDemo::endWorkerTask()
 
 void TreeDemo::startWorkerTask()
 {
-    //std::unique_lock<std::mutex> lock(m_mutex);
+    //std::lock_guard lock(m_mutex);
 
     if (isWorkerTaskRunning())
     {
@@ -109,7 +123,7 @@ void TreeDemo::sendProgressUpdate()
 {
     if (!!m_progressCallback)
     {
-        //std::unique_lock<std::mutex> lock(m_mutex);
+        //std::lock_guard lock(m_mutex);
         m_quit |= (0 != m_progressCallback(1, m_totalNodesProcessed));
     }
     else
@@ -127,7 +141,7 @@ int TreeDemo::processNodes()
         && (nodesProcessed < m_minNodesProcessedPerFrame || pTree->nodeQueue.top().beginTime <= m_modelTime)
         )
     {
-        //std::unique_lock<std::mutex> lock(m_mutex);
+        //std::lock_guard lock(m_mutex);
 
         auto currentNode = pTree->nodeQueue.top();
         if (!pTree->isViable(currentNode))
@@ -160,7 +174,7 @@ void TreeDemo::restart(bool randomize)
 
 void TreeDemo::processCommands()
 {
-    //std::unique_lock<std::mutex> lock(m_mutex);
+    //std::lock_guard lock(m_mutex);
 
     if (m_restart)
     {
@@ -664,6 +678,7 @@ bool TreeDemo::processKey(int key)
 		}
         else
         {
+            // should we end the worker task first?
 			std::swap(m_breeders.back(), pTree);
 			restart();
 			cout << "** Swapped with breeding cache: loaded " << pTree->name << endl;
@@ -680,7 +695,7 @@ bool TreeDemo::processKey(int key)
 
 int TreeDemo::save()
 {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::lock_guard lock(m_mutex);
 
     gotoNextUnusedFileIndex();
 

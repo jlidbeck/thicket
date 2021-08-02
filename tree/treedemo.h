@@ -20,8 +20,8 @@ namespace fs = std::filesystem;
 
 class TreeDemo
 {
-public:
     std::shared_ptr<qtree> pTree;
+public:
 
     qcanvas canvas;
 
@@ -63,6 +63,13 @@ private:
     std::future<void> m_currentRun;
     bool m_cancel = false;
 
+public:
+    TreeDemo() {}
+    ~TreeDemo();
+
+    std::shared_ptr<qtree>  getTree() const { return pTree; }
+    std::mutex&             getMutex()      { return m_mutex; }
+
     void processCommands();
 
     void endWorkerTask();
@@ -71,6 +78,7 @@ private:
     void sendProgressUpdate();
 
 public:
+    bool isValid() const;
     bool isWorkerTaskRunning() const;
     bool isQuitting() const { return m_quit; }
 
