@@ -24,8 +24,8 @@ BEGIN_MESSAGE_MAP(CThicketApp, CWinAppEx)
 	ON_COMMAND(ID_APP_ABOUT, &CThicketApp::OnAppAbout)
 	// Standard file based document commands
 	ON_COMMAND(ID_FILE_NEW, &CWinAppEx::OnFileNew)
-	ON_COMMAND(ID_FILE_OPEN, &CThicketApp::OnFileOpenSettings)
 	ON_COMMAND(ID_FILE_OPEN_SETTINGS, &CThicketApp::OnFileOpenSettings)
+	ON_COMMAND(ID_FILE_OPEN_IMAGE, &CThicketApp::OnFileOpenImage)
 	// Standard print setup command
 	ON_COMMAND(ID_FILE_PRINT_SETUP, &CWinAppEx::OnFilePrintSetup)
 END_MESSAGE_MAP()
@@ -236,6 +236,25 @@ void CThicketApp::OnFileOpenSettings()
 	auto pWnd = ::AfxGetMainWnd();
 
 	CFileDialog dlg(TRUE, nullptr, nullptr, OFN_EXPLORER | OFN_FILEMUSTEXIST, L"settings.json|*.settings.json|PNG|*.png|All Files|*.*||", pWnd);
+	CString sz;
+
+	fs::path curPath = fs::absolute(L".");
+	dlg.m_ofn.lpstrInitialDir = curPath.c_str();
+	dlg.m_ofn.lpstrFile = sz.GetBufferSetLength(MAX_PATH + 1);
+	dlg.m_ofn.nMaxFile = sz.GetAllocLength();
+
+	if (IDOK == dlg.DoModal())
+	{
+		this->OpenDocumentFile(dlg.GetPathName());
+	}
+}
+
+
+void CThicketApp::OnFileOpenImage()
+{
+	auto pWnd = ::AfxGetMainWnd();
+
+	CFileDialog dlg(TRUE, nullptr, nullptr, OFN_EXPLORER | OFN_FILEMUSTEXIST, L"jpeg (*.jpg, *.jpeg)|*.jpg;*.jpeg|PNG|*.png|All Files|*.*||", pWnd);
 	CString sz;
 
 	fs::path curPath = fs::absolute(L".");
