@@ -114,7 +114,7 @@ BOOL CThicketApp::InitInstance()
 	// Register the application's document templates.  Document templates
 	//  serve as the connection between documents, frame windows and views
 	CMultiDocTemplate* pDocTemplate;
-	pDocTemplate = new CMultiDocTemplate(IDR_ThicketTYPE,
+	pDocTemplate = new CMultiDocTemplate(IDR_TREEDOC_TYPE,
 		RUNTIME_CLASS(CThicketDoc),
 		RUNTIME_CLASS(CChildFrame), // custom MDI child frame
 		RUNTIME_CLASS(CThicketView));

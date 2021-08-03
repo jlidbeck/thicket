@@ -170,6 +170,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	lstBasicCommands.AddTail(ID_FILE_NEW);
 	//lstBasicCommands.AddTail(ID_FILE_OPEN);
 	lstBasicCommands.AddTail(ID_FILE_OPEN_SETTINGS);
+	lstBasicCommands.AddTail(ID_FILE_OPEN_IMAGE);
 	lstBasicCommands.AddTail(ID_FILE_SAVE);
 	lstBasicCommands.AddTail(ID_FILE_PRINT);
 	lstBasicCommands.AddTail(ID_APP_EXIT);
