@@ -19,7 +19,7 @@ bool TreeDemo::isValid() const
 {
     std::lock_guard lock(m_mutex);
 
-    return (pTree != nullptr && m_currentRun.valid() && !m_currentRun._Is_ready());
+    return (m_pTree != nullptr && m_currentRun.valid() && !m_currentRun._Is_ready());
 }
 
 bool TreeDemo::isWorkerTaskRunning() const
@@ -62,7 +62,7 @@ void TreeDemo::startWorkerTask()
 
     m_currentRun = std::async(std::launch::async, [&] {
 
-        while (!pTree->nodeQueue.empty())
+        while (!m_pTree->nodeQueue.empty())
         {
             if (m_cancel)
                 return;
@@ -77,6 +77,8 @@ void TreeDemo::startWorkerTask()
 
         }   // while(no key pressed and not complete)
 
+        auto sz = "COMPLETE: " + std::to_string(*m_pTree);
+
         sendProgressUpdate();
     });
 
@@ -86,7 +88,7 @@ void TreeDemo::startWorkerTask()
 // sets stepping mode and performs one step
 bool TreeDemo::beginStepMode()
 {
-    if (pTree == nullptr)
+    if (m_pTree == nullptr)
         return false;
 
     endWorkerTask();
@@ -94,7 +96,7 @@ bool TreeDemo::beginStepMode()
     m_stepping = true;
     m_maxNodesProcessedPerFrame = 1;
 
-    if (pTree->nodeQueue.empty())
+    if (m_pTree->nodeQueue.empty())
         restart();
     int nodesProcessed = processNodes();
 
@@ -103,13 +105,13 @@ bool TreeDemo::beginStepMode()
 
 bool TreeDemo::endStepMode()
 {
-    if (pTree == nullptr)
+    if (m_pTree == nullptr)
         return false;
 
     m_stepping = false;
     m_maxNodesProcessedPerFrame = 64;
 
-    if (pTree->nodeQueue.empty())
+    if (m_pTree->nodeQueue.empty())
         restart();
 
     // is worker thread complete? if so, kick it off
@@ -134,25 +136,25 @@ void TreeDemo::sendProgressUpdate()
 int TreeDemo::processNodes()
 {
     int nodesProcessed = 0;
-    while (!pTree->nodeQueue.empty()
+    while (!m_pTree->nodeQueue.empty()
         && nodesProcessed < m_maxNodesProcessedPerFrame
-        //&& pTree->nodeQueue.top().det() >= cutoff 
-        && (nodesProcessed < m_minNodesProcessedPerFrame || pTree->nodeQueue.top().beginTime <= m_modelTime)
+        //&& m_pTree->nodeQueue.top().det() >= cutoff 
+        && (nodesProcessed < m_minNodesProcessedPerFrame || m_pTree->nodeQueue.top().beginTime <= m_modelTime)
         )
     {
         //std::lock_guard lock(m_mutex);
 
-        auto currentNode = pTree->nodeQueue.top();
-        if (!pTree->isViable(currentNode))
+        auto currentNode = m_pTree->nodeQueue.top();
+        if (!m_pTree->isViable(currentNode))
         {
-            pTree->nodeQueue.pop();
+            m_pTree->nodeQueue.pop();
             continue;
         }
 
-        pTree->drawNode(canvas, currentNode);
+        m_pTree->drawNode(canvas, currentNode);
 
         nodesProcessed++;
-        pTree->process();
+        m_pTree->process();
         m_modelTime = currentNode.beginTime + 1.0;
     }
 
@@ -181,31 +183,33 @@ void TreeDemo::processCommands()
 
         cout << "--- Starting run --- " << endl;
 
-        if (!pTree)
+        if (!m_pTree)
         {
-            pTree = m_defaultTree.clone();
+            m_pTree = m_defaultTree.clone();
             cout << "--- Set default tree\n";
         }
 
+        auto sz = std::to_string(*m_pTree);
+
         if (m_randomize)
         {
-            pTree->setRandomSeed(++m_presetIndex);
-            //pTree->name = std::string("R") + std::to_string(m_presetIndex);
+            m_pTree->setRandomSeed(++m_presetIndex);
+            //m_pTree->name = std::string("R") + std::to_string(m_presetIndex);
             m_randomize = false;
             cout << "--- Randomized [" << m_presetIndex << +"]\n";
         }
-        pTree->create();
-        pTree->transformCounts.clear();
+        m_pTree->create();
+        m_pTree->transformCounts.clear();
 
         //json settingsJson;
-        //pTree->to_json(settingsJson);
+        //m_pTree->to_json(settingsJson);
         //cout << settingsJson << endl;
 
-        cout << "--- Starting run: " << pTree->name << ": " << pTree->transforms.size() << " transforms" << endl;
+        cout << "--- Starting run: " << m_pTree->name << ": " << m_pTree->transforms.size() << " transforms" << endl;
 
         canvas.create(cv::Mat3b(m_renderSize));
         canvas.clear();
-        canvas.setTransformToFit(pTree->getBoundingRect(), m_imagePadding);
+        canvas.setTransformToFit(m_pTree->getBoundingRect(), m_imagePadding);
 
 
         m_startTime = std::chrono::steady_clock::now();
@@ -256,6 +260,8 @@ int TreeDemo::openSettingsFile(int idx)
 
 int TreeDemo::openSettingsFile(fs::path path)
 {
+    endWorkerTask();
+
     //  If path indicates a PNG, look for the corresponding settings file
     auto x = path.extension().native();
     if (path.extension().native().compare(fs::path(L".png").native()) == 0)
@@ -277,18 +283,19 @@ int TreeDemo::openSettingsFile(fs::path path)
 
         json j;
         infile >> j;
-        pTree = qtree::createTreeFromJson(j);
+        m_pTree = qtree::createTreeFromJson(j);
 
         cout << "Settings read from: " << path << endl;
+        cout << std::to_string(*m_pTree) << endl;
 
-        if (pTree->name.empty())
+        if (m_pTree->name.empty())
         {
-            //  set name attribute to default: filename without .settings.json
+            //  set name attribute to default: filename without path or extension
             while (path.has_extension())
             {
                 path = path.stem();
             }
-            pTree->name = path.generic_string();
+            m_pTree->name = path.generic_string();
         }
 
         restart();
@@ -415,7 +422,7 @@ bool TreeDemo::processKey(int key)
 
     //  Config-level commands: only active if config is loaded
 
-    if (pTree == nullptr)
+    if (m_pTree == nullptr)
         return false;
 
     switch (key)
@@ -427,7 +434,7 @@ bool TreeDemo::processKey(int key)
 
     case 'C':
     {
-        pTree = pTree->clone();
+        m_pTree = m_pTree->clone();
         restart();
         cout << "Cloned\n";
         return true;
@@ -435,102 +442,102 @@ bool TreeDemo::processKey(int key)
 
     case '+':
     case 0x6B0000:      // VK_ADD << 16
-        pTree->domain = pTree->domain * 2.0f;
+        m_pTree->domain = m_pTree->domain * 2.0f;
         restart();
         return true;
 
     case '-':
     case 0x6D0000:      // VK_SUBTRACT << 16
-        pTree->domain = pTree->domain * 0.5f;
+        m_pTree->domain = m_pTree->domain * 0.5f;
         restart();
         return true;
 
     case '0':   // recenter model in domain
-        pTree->domain.x = -0.5f * pTree->domain.width;
-        pTree->domain.y = -0.5f * pTree->domain.height;
+        m_pTree->domain.x = -0.5f * m_pTree->domain.width;
+        m_pTree->domain.y = -0.5f * m_pTree->domain.height;
         restart();
         return true;
 
     case '1':
     {
         // cycle thru aspect ratios
-        float a = pTree->domain.width / pTree->domain.height;
+        float a = m_pTree->domain.width / m_pTree->domain.height;
         if (a == 1.0f)
-            pTree->domain.width *= 2.0f;
+            m_pTree->domain.width *= 2.0f;
         else if (a == 2.0f)
-            pTree->domain.width *= 2.0f;
+            m_pTree->domain.width *= 2.0f;
         else if (a == 4.0f)
-            pTree->domain = cv::Rect_<float>(pTree->domain.x, pTree->domain.y, pTree->domain.width / 4.0f, pTree->domain.height * 2.0f);
+            m_pTree->domain = cv::Rect_<float>(m_pTree->domain.x, m_pTree->domain.y, m_pTree->domain.width / 4.0f, m_pTree->domain.height * 2.0f);
         else if (a == 0.5f)
-            pTree->domain.height *= 2.0f;
+            m_pTree->domain.height *= 2.0f;
         else if (a > 1.0f)
-            pTree->domain.width = pTree->domain.height;
+            m_pTree->domain.width = m_pTree->domain.height;
         else
-            pTree->domain.height = pTree->domain.width;
+            m_pTree->domain.height = m_pTree->domain.width;
         restart();
         return true;
     }
 
     case '2':
-        switch (pTree->domainShape)
+        switch (m_pTree->domainShape)
         {
-        case qtree::DomainShape::RECT: pTree->domainShape = qtree::DomainShape::ELLIPSE; restart(); return true;
-        case qtree::DomainShape::ELLIPSE: pTree->domainShape = qtree::DomainShape::RECT; restart(); return true;
+        case qtree::DomainShape::RECT: m_pTree->domainShape = qtree::DomainShape::ELLIPSE; restart(); return true;
+        case qtree::DomainShape::ELLIPSE: m_pTree->domainShape = qtree::DomainShape::RECT; restart(); return true;
         }
         return true;
                 
     case 0x250000:  // left (VK_LEFT << 16)
     //case 37:
     case 75:
-        pTree->domain.x += 0.10f * std::min( pTree->domain.width, pTree->domain.height);
+        m_pTree->domain.x += 0.10f * std::min( m_pTree->domain.width, m_pTree->domain.height);
         restart();
         return true;
 
     case 0x260000:  // up
     //case 38:
     case 72:
-        pTree->domain.y -= 0.10f * std::min( pTree->domain.width, pTree->domain.height);
+        m_pTree->domain.y -= 0.10f * std::min( m_pTree->domain.width, m_pTree->domain.height);
         restart();
         return true;
 
     case 0x270000:  // right
     //case 39:
     case 77:
-        pTree->domain.x -= 0.10f * std::min( pTree->domain.width, pTree->domain.height);
+        m_pTree->domain.x -= 0.10f * std::min( m_pTree->domain.width, m_pTree->domain.height);
         restart();
         return true;
 
     case 0x280000:  // down
     //case 40:
     case 80:
-        pTree->domain.y += 0.10f * std::min( pTree->domain.width, pTree->domain.height);
+        m_pTree->domain.y += 0.10f * std::min( m_pTree->domain.width, m_pTree->domain.height);
         restart();
         return true;
 
     case 'l':   // cycle thru line options
-        if (pTree->lineThickness == 0)
+        if (m_pTree->lineThickness == 0)
         {
-            pTree->lineThickness = 1;
-            pTree->lineColor = cv::Scalar(0, 0, 0);
+            m_pTree->lineThickness = 1;
+            m_pTree->lineColor = cv::Scalar(0, 0, 0);
         }
-        else if (pTree->lineColor == cv::Scalar(0, 0, 0))
+        else if (m_pTree->lineColor == cv::Scalar(0, 0, 0))
         {
-            pTree->lineColor = cv::Scalar(255,255,255);
+            m_pTree->lineColor = cv::Scalar(255,255,255);
         }
         else
         {
-            pTree->lineThickness = 0;
+            m_pTree->lineThickness = 0;
         }
         restart();
         return true;
 
     case 'c':   // randomize colors
-        pTree->randomizeTransforms(1);
+        m_pTree->randomizeTransforms(1);
         restart();
         return true;
 
     case 'p':   // randomize drawPolygon
-        pTree->randomizeTransforms(4);
+        m_pTree->randomizeTransforms(4);
         restart();
         return true;
 
@@ -560,17 +567,17 @@ bool TreeDemo::processKey(int key)
     case 't':
     {
         // sort in order of gestation, increasing
-        std::vector<int> indexes(pTree->transforms.size());
+        std::vector<int> indexes(m_pTree->transforms.size());
         std::iota(indexes.begin(), indexes.end(), 0);
-        std::sort(indexes.begin(), indexes.end(), [&](int a, int b) { return pTree->transforms[a].gestation < pTree->transforms[b].gestation; });
+        std::sort(indexes.begin(), indexes.end(), [&](int a, int b) { return m_pTree->transforms[a].gestation < m_pTree->transforms[b].gestation; });
 
-        cout << "=== " << pTree->name << " transforms: " << endl;
+        cout << "=== " << m_pTree->name << " transforms: " << endl;
         cout << "idx freq gest  key      color\n";
         for (auto i : indexes)
         {
-            auto const &t = pTree->transforms[i];
+            auto const &t = m_pTree->transforms[i];
             cout << std::setw(2) << i
-                    << ":" << std::setw(5) << pTree->transformCounts[t.transformMatrixKey] 
+                    << ":" << std::setw(5) << m_pTree->transformCounts[t.transformMatrixKey] 
                     << " " << std::setw(4) << std::setprecision(3) << t.gestation
                     << "  " << t.transformMatrixKey 
                     << "  " << t.colorTransform.description() << endl;
@@ -582,9 +589,9 @@ bool TreeDemo::processKey(int key)
     {
         int idx;
         cout << "Drop transform? ";
-        if (cin >> idx)
+        if ((cin >> idx) && idx>=0 && idx<m_pTree->transforms.size())
         {
-            pTree->transforms.erase(pTree->transforms.begin() + idx);
+            m_pTree->transforms.erase(m_pTree->transforms.begin() + idx);
         }
         return true;
     }
@@ -592,19 +599,19 @@ bool TreeDemo::processKey(int key)
     case 20:    // Ctrl-T
     {
         // remove unexpressed genes
-        int count = (int)pTree->transforms.size();
-        for (auto it = pTree->transforms.begin(); it != pTree->transforms.end(); )
+        size_t count = m_pTree->transforms.size();
+        for (auto it = m_pTree->transforms.begin(); it != m_pTree->transforms.end(); )
         {
-            if (pTree->transformCounts[it->transformMatrixKey] == 0)
+            if (m_pTree->transformCounts[it->transformMatrixKey] == 0)
             {
-                it = pTree->transforms.erase(it);
+                it = m_pTree->transforms.erase(it);
             }
             else
             {
                 ++it;
             }
         }
-        cout << "=== " << (count - pTree->transforms.size()) << " transforms removed.\n";
+        cout << "=== " << (count - m_pTree->transforms.size()) << " transforms removed.\n";
         return true;
     }
 
@@ -614,26 +621,26 @@ bool TreeDemo::processKey(int key)
 
     //    std::vector<qnode> nodes;
     //    cv::Rect2f rc(2, 3, 10, 7);
-    //    pTree->getNodesIntersecting(rc, nodes);
+    //    m_pTree->getNodesIntersecting(rc, nodes);
     //    for (auto &node : nodes)
     //    {
     //        std::vector<string> lineage;
-    //        pTree->getLineage(node, lineage);
+    //        m_pTree->getLineage(node, lineage);
     //        cout << " x: [";
     //        for (auto it = lineage.rbegin(); it != lineage.rend(); ++it) cout << *it << " ";
     //        cout << "]\n";
-    //        count += pTree->removeNode(node.id);
+    //        count += m_pTree->removeNode(node.id);
     //    }
 
     //    //for (int idx = 0; idx < 100000 && count<1; ++idx)
     //    //{
-    //    //    count += pTree->removeNode(-1);
+    //    //    count += m_pTree->removeNode(-1);
     //    //}
 
     //    if (count)
     //    {
     //        cout << "** remove(" << 42 << "): " << count << " nodes removed\n";
-    //        pTree->redrawAll(canvas);
+    //        m_pTree->redrawAll(canvas);
     //        cv::imshow("Memtest", canvas.m_image); // Show our image inside it.
     //        break;
     //    }
@@ -642,13 +649,13 @@ bool TreeDemo::processKey(int key)
 
     //case 'X':
     {
-        pTree->regrowAll();
+        m_pTree->regrowAll();
         return true;
     }
 
     case 'B':
     {
-        m_breeders.push_back(pTree->clone());
+        m_breeders.push_back(m_pTree->clone());
         cout << "** tree " << m_breeders.back()->name << " cloned to breed pool [" << m_breeders.size() - 1 << "] **\n";
         return true;
     }
@@ -657,16 +664,16 @@ bool TreeDemo::processKey(int key)
     {
         if (m_breeders.empty())
         {
-            m_breeders.push_back(pTree->clone());
+            m_breeders.push_back(m_pTree->clone());
             cout << "** tree "<< m_breeders.back()->name<<" cloned to breed pool [" << m_breeders.size()-1 << "] **\n";
         }
         else
         {
             auto other = m_breeders.back();
-            cout << "** Breeding current " << pTree->name << endl;
+            cout << "** Breeding current " << m_pTree->name << endl;
             cout << "** Breeding with " << other->name << endl;
-            pTree->combineWith(*other, 0.1);
-            cout << "** trees combined: "<<pTree->name<<" **\n";
+            m_pTree->combineWith(*other, 0.1);
+            cout << "** trees combined: "<<m_pTree->name<<" **\n";
             //restart = true;
         }
         return true;
@@ -681,9 +688,9 @@ bool TreeDemo::processKey(int key)
         else
         {
             // should we end the worker task first?
-			std::swap(m_breeders.back(), pTree);
+			std::swap(m_breeders.back(), m_pTree);
 			restart();
-			cout << "** Swapped with breeding cache: loaded " << pTree->name << endl;
+			cout << "** Swapped with breeding cache: loaded " << m_pTree->name << endl;
 		}
 		return true;
 	}
@@ -700,44 +707,86 @@ bool TreeDemo::processKey(int key)
     return false;
 }
 
-int TreeDemo::save()
+std::string TreeDemo::getName() const
+{
+    if (!m_pTree->name.empty())
+    {
+        return m_pTree->name;
+    }
+
+    char name[24];
+    sprintf_s(name, "tree%04d", m_currentFileIndex);
+
+    return name;
+}
+
+//  Saves settings and images.
+//  Uses qtree::name if defined, otherwise creates a name.
+void TreeDemo::save()
 {
     std::lock_guard lock(m_mutex);
 
     gotoNextUnusedFileIndex();
 
-    cout << "Saving m_image and settings: " << m_currentFileIndex << endl;
+    cout << "Saving image and settings: " << m_currentFileIndex << endl;
 
-    char name[24];
-    sprintf_s(name, "tree%04d", m_currentFileIndex);
+    std::string name = getName();
+    save(name);
 
-    // Write raster image to PNG file
-
-    fs::path imagePath = std::string(name) + ".png";
-    cv::imwrite(imagePath.string(), canvas.getImage());
-
-    // Write vector image to SVG file
-
-    auto svgPath = imagePath.replace_extension("svg");
-    canvas.getSVG().save(svgPath.string());
-
-    if (pTree->name.empty())
+    if (m_pTree->name.empty())
     {
-        pTree->name = name;
+        m_pTree->name = name;
     }
 
+}
+
+//  Saves settings, image, and vector files, and any other files specific to the qtree.
+//  The extension of {fileName} is ignored.
+//  Multiple files are saved with .PNG, .SVG, and .settings.json extensions.
+void TreeDemo::save(fs::path path) const
+{
+    //  save image, vector, and settings files as:
+    //  {name}.png, {name}.svg, {name}.settings.json
+
+    while (path.has_extension())
+    {
+        path.replace_extension();
+    }
+
+    saveImage(    path.replace_extension("png")           );
+    saveSVG(      path.replace_extension("svg")           );
+    saveSettings( path.replace_extension("settings.json") );
+}
+
+//  Save raster image to file
+void TreeDemo::saveImage(fs::path imagePath) const
+{
+    cv::imwrite(imagePath.string(), canvas.getImage());
+
     // allow extending classes to customize the save
-    pTree->saveImage(imagePath, canvas);
+    m_pTree->saveImage(imagePath, canvas);
+}
 
-    // save the settings too
-    std::ofstream outfile(imagePath.replace_extension("settings.json"));
+//  Save vector drawing to file
+void TreeDemo::saveSVG(fs::path svgPath) const
+{
+    canvas.getSVG().save(svgPath.string());
+}
+
+//  Save settings as json file
+void TreeDemo::saveSettings(fs::path settingsPath) const
+{
+    std::lock_guard lock(m_mutex);
+    std::ofstream outfile(settingsPath);
+
+    // throw exception on file errors
+    outfile.exceptions(std::ofstream::badbit | std::ofstream::failbit);
+
     json j;
-    pTree->to_json(j);
+    m_pTree->to_json(j);
     outfile << std::setw(4) << j;
-
-    cout << "Image saved: " << imagePath << endl;
-
-    return 0;
+    outfile.flush();
+    outfile.close();
 }
 
 int TreeDemo::openPrevious()

@@ -22,8 +22,6 @@ namespace fs = std::filesystem;
 using std::cout;
 using std::endl;
 
-class qcanvas;
-
 using std::vector;
 using std::string;
 using std::priority_queue;
@@ -33,6 +31,8 @@ typedef cv::Matx<float, 3, 3> Matx33;
 typedef cv::Matx<float, 4, 1> Matx41;
 typedef cv::Matx<float, 4, 4> Matx44;
 
+
+#pragma region qcanvas
 
 class qcanvas
 {
@@ -127,8 +127,12 @@ public:
 
     }
 
-};
+};  // class qcanvas
 
+#pragma endregion
+
+
+#pragma region qtransform
 
 class qtransform
 {
@@ -223,6 +227,10 @@ inline void from_json(json const &j, std::vector<qtransform> &transforms)
     }
 }
 
+#pragma endregion
+
+
+#pragma region qnode
 
 class qnode
 {
@@ -263,8 +271,13 @@ public:
             return (b.det() > a.det());
         }
     };
-};
 
+};  // class qnode
+
+#pragma endregion
+
+
+#pragma region qtree
 
 //  This macro should be invoked for each qtree-extending class
 //  It creates a global function pointer (which is never used)
@@ -318,6 +331,8 @@ public:
     virtual void randomizeTransforms(int flags) {};
 
 #pragma region Serialization
+
+    friend std::string to_string(qtree const& tree);
 
     //  Extending classes should override and invoke the base member as necessary
     virtual void to_json(json &j) const
@@ -632,6 +647,16 @@ public:
         );
 
     }
-};
 
+};  // class qtree
+
+namespace std
+{
+    inline std::string to_string(qtree const& tree)
+    {
+        return tree.name + " " + std::to_string(tree.transforms.size()) + " T";
+    }
+}
+
+#pragma endregion
 

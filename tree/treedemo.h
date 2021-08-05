@@ -21,7 +21,7 @@ namespace fs = std::filesystem;
 
 class TreeDemo
 {
-    std::shared_ptr<qtree> pTree;
+    std::shared_ptr<qtree> m_pTree;
 public:
 
     qcanvas canvas;
@@ -68,11 +68,13 @@ public:
     TreeDemo() {}
     ~TreeDemo();
 
-    std::shared_ptr<qtree>  getTree() const { return pTree; }
+    std::shared_ptr<qtree>  getTree() const { return m_pTree; }
     std::mutex&             getMutex()      { return m_mutex; }
 
+protected:
     void processCommands();
 
+public:
     void endWorkerTask();
     void startWorkerTask();
 
@@ -91,11 +93,18 @@ public:
 
     void restart(bool randomize=false);
 
+private:
     int processNodes();
 
+public:
     bool processKey(int key);
 
-    int save();
+    void save();
+    void save(fs::path fileName) const;
+    void saveSettings(fs::path settingsPath) const;
+    void saveImage(fs::path imagePath) const;
+    void saveSVG(fs::path svgPath) const;
+    std::string getName() const;
     int openNext();
     int openPrevious();
     int openSettingsFile(int idx);
