@@ -11,7 +11,6 @@ using std::endl;
 
 TreeDemo::~TreeDemo()
 {
-    std::lock_guard lock(m_mutex);
     endWorkerTask();
 }
 
@@ -32,7 +31,7 @@ bool TreeDemo::isWorkerTaskRunning() const
 
 void TreeDemo::endWorkerTask()
 {
-    //std::lock_guard lock(m_mutex);
+    std::lock_guard lock(m_mutex);
 
     if (m_currentRun.valid())
     {
