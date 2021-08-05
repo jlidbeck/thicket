@@ -23,6 +23,9 @@
 IMPLEMENT_DYNCREATE(CThicketDoc, CDocument)
 
 BEGIN_MESSAGE_MAP(CThicketDoc, CDocument)
+	ON_COMMAND(ID_FILE_SAVE_SETTINGS, &CThicketDoc::OnFileSave)
+	ON_COMMAND(ID_FILE_SAVE, &CThicketDoc::OnFileSave)
+    ON_COMMAND(ID_FILE_SAVE_AS, &CThicketDoc::OnFileSaveAs)
 END_MESSAGE_MAP()
 
 
@@ -30,43 +33,12 @@ END_MESSAGE_MAP()
 
 CThicketDoc::CThicketDoc() noexcept
 {
-	// TODO: add one-time construction code here
-
 }
 
 CThicketDoc::~CThicketDoc()
 {
 }
 
-BOOL CThicketDoc::OnNewDocument()
-{
-	if (!CDocument::OnNewDocument())
-		return FALSE;
-
-	// TODO: add reinitialization code here
-	// (SDI documents will reuse this document)
-
-	m_demo.restart(true);
-
-	return TRUE;
-}
-
-
-
-
-// CThicketDoc serialization
-
-void CThicketDoc::Serialize(CArchive& ar)
-{
-	if (ar.IsStoring())
-	{
-		// TODO: add storing code here
-	}
-	else
-	{
-		m_demo.openSettingsFile(fs::path((LPCTSTR)ar.m_strFileName));
-	}
-}
 
 #ifdef SHARED_HANDLERS
 
@@ -79,7 +51,7 @@ void CThicketDoc::OnDrawThumbnail(CDC& dc, LPRECT lprcBounds)
 	CString strText = _T("TODO: implement thumbnail drawing here");
 	LOGFONT lf;
 
-	CFont* pDefaultGUIFont = CFont::FromHandle((HFONT) GetStockObject(DEFAULT_GUI_FONT));
+	CFont* pDefaultGUIFont = CFont::FromHandle((HFONT)GetStockObject(DEFAULT_GUI_FONT));
 	pDefaultGUIFont->GetLogFont(&lf);
 	lf.lfHeight = 36;
 
@@ -110,7 +82,7 @@ void CThicketDoc::SetSearchContent(const CString& value)
 	}
 	else
 	{
-		CMFCFilterChunkValueImpl *pChunk = nullptr;
+		CMFCFilterChunkValueImpl* pChunk = nullptr;
 		ATLTRY(pChunk = new CMFCFilterChunkValueImpl);
 		if (pChunk != nullptr)
 		{
@@ -137,4 +109,154 @@ void CThicketDoc::Dump(CDumpContext& dc) const
 #endif //_DEBUG
 
 
-// CThicketDoc commands
+
+#pragma region files and serialization
+
+//  Virtual override of CDocument::OnNewDocument.
+BOOL CThicketDoc::OnNewDocument()
+{
+    if (!CDocument::OnNewDocument())
+        return FALSE;
+
+    // TODO: add reinitialization code here
+    // (SDI documents will reuse this document)
+
+    m_demo.restart(true);
+
+    return TRUE;
+}
+
+
+//  Virtual override of CDocument::OnOpenDocument.
+//  OnOpenDocument() is invoked by CWinAppEx::OpenDocumentFile.
+//  Default implementation opens the file and passes it via CArchive to CThicketDoc::Serialize.
+//  Override to allow TreeDemo to manage the files for now
+BOOL CThicketDoc::OnOpenDocument(LPCTSTR lpszPathName)
+{
+	m_demo.openSettingsFile(fs::path(lpszPathName));
+	CString title(m_demo.getName().c_str());
+	SetTitle(title);
+	SetModifiedFlag(1);
+	UpdateAllViews(nullptr);
+
+    return TRUE;
+}
+
+
+//  Virtual override of CDocument::OnSaveDocument.
+//  OnSaveDocument is invoked by {?}, also to save backups in a temporary folder.
+//  Default implementation opens the file and passes it via CArchive to CThicketDoc::Serialize.
+//  Override to allow TreeDemo to manage the files for now
+BOOL CThicketDoc::OnSaveDocument(LPCTSTR lpszPathName)
+{
+    fs::path path(lpszPathName);
+    try
+    {
+        m_demo.save(path);
+    }
+    catch (std::exception& ex)
+    {
+        char szErr[250];
+        ::strerror_s(szErr, errno);
+        CStringA msg;
+        msg.Format("saveSettings failed: %s\n\nError: %d\n%s", ex.what(), errno, szErr);
+
+        ::MessageBoxA(*::AfxGetMainWnd(), msg, "Fail", MB_OK);
+		return FALSE;
+    }
+
+    return TRUE;
+}
+
+
+//  virtual override of CDocument::Serialize
+//  Normally this function is called by OnOpenDocument, OnSaveDocument with a CFile already open
+void CThicketDoc::Serialize(CArchive& ar)
+{
+	throw std::exception("CThicketDoc::Serialize is not implemented");
+
+    if (ar.IsStoring())
+    {
+		json j;
+		m_demo.getTree()->to_json(j);
+		std::ostringstream oss;
+		oss << j;
+		CStringA sz(oss.str().c_str());
+		ar << sz;
+    }
+    else
+    {
+		CStringA sz;
+		ar >> sz;
+		json j;
+		std::istringstream iss;
+		iss >> j;
+		m_demo.getTree()->from_json(j);
+    }
+}
+
+#pragma endregion files and serialization
+
+#pragma region File menu handlers
+
+//void CThicketDoc::OnFileSaveSettings()
+//{
+//	OnFileSave();
+//}
+
+
+//  Handle ID_FILE_SAVE, ID_FILE_SAVE_SETTINGS
+//  This is a non-virtual override of CDocument::OnFileSave.
+//  The default implementation passes the path to OnSaveDocument
+//  Override to customize the file dialog and file filters
+void CThicketDoc::OnFileSave()
+{
+	CString sz = GetPathName();
+	if (sz.IsEmpty())
+	{
+		OnFileSaveAs();
+	}
+	else
+	{
+		CDocument::OnFileSave();
+	}
+
+}
+
+
+//  Handle ID_FILE_SAVE_AS
+//  This is a non-virtual override of CDocument::OnFileSaveAs.
+//  The default implementation opens a file dialog and passes the path to OnSaveDocument
+//  Override to customize the file dialog and file filters
+void CThicketDoc::OnFileSaveAs()
+{
+	auto pWnd = ::AfxGetMainWnd();
+
+	CFileDialog dlg(TRUE, L"settings.json", nullptr, OFN_EXPLORER, L"settings.json|*.settings.json||", pWnd);
+
+	CString sz = GetPathName();
+	fs::path curPath = fs::absolute(L".");
+	if (sz.IsEmpty())
+	{
+		dlg.m_ofn.lpstrInitialDir = curPath.c_str();
+	}
+	else
+	{
+		dlg.m_ofn.lpstrInitialDir = nullptr;
+	}
+	dlg.m_ofn.lpstrTitle = L"Save";
+	dlg.m_ofn.lpstrFile = sz.GetBufferSetLength(MAX_PATH + 1);
+	dlg.m_ofn.nMaxFile = sz.GetAllocLength();
+
+	if (IDOK == dlg.DoModal())
+	{
+		CString path = dlg.GetPathName();
+		//this->SetPathName(path, 1);
+		this->OnSaveDocument(path);
+
+		SetModifiedFlag(0);
+	}
+}
+
+#pragma endregion
+

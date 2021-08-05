@@ -249,7 +249,11 @@ void CThicketView::OnChar(UINT nChar, UINT nRepCnt, UINT nFlags)
 		//}
 
 		processed = pDoc->m_demo.processKey(nChar);
-		if (processed) return;
+		if (processed)
+		{
+			pDoc->SetModifiedFlag(1);
+			return;
+		}
 	}
 
 	CScrollView::OnChar(nChar, nRepCnt, nFlags);

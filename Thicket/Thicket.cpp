@@ -24,6 +24,7 @@ BEGIN_MESSAGE_MAP(CThicketApp, CWinAppEx)
 	ON_COMMAND(ID_APP_ABOUT, &CThicketApp::OnAppAbout)
 	// Standard file based document commands
 	ON_COMMAND(ID_FILE_NEW, &CWinAppEx::OnFileNew)
+	ON_COMMAND(ID_FILE_SAVE_SETTINGS, &CThicketApp::OnFileSaveSettings)
 	ON_COMMAND(ID_FILE_OPEN_SETTINGS, &CThicketApp::OnFileOpenSettings)
 	ON_COMMAND(ID_FILE_OPEN_IMAGE, &CThicketApp::OnFileOpenImage)
 	// Standard print setup command
@@ -229,6 +230,25 @@ void CThicketApp::SaveCustomState()
 }
 
 // CThicketApp message handlers
+
+
+void CThicketApp::OnFileSaveSettings()
+{
+	auto pWnd = ::AfxGetMainWnd();
+
+	CFileDialog dlg(TRUE, L"settings.json", nullptr, OFN_EXPLORER, L"settings.json|*.settings.json||", pWnd);
+	CString sz;
+
+	fs::path curPath = fs::absolute(L".");
+	dlg.m_ofn.lpstrInitialDir = curPath.c_str();
+	dlg.m_ofn.lpstrFile = sz.GetBufferSetLength(MAX_PATH + 1);
+	dlg.m_ofn.nMaxFile = sz.GetAllocLength();
+
+	if (IDOK == dlg.DoModal())
+	{
+		this->SaveAllModified();
+	}
+}
 
 
 void CThicketApp::OnFileOpenSettings()

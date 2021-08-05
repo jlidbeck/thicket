@@ -33,8 +33,9 @@ public:
 	virtual void LoadCustomState();
 	virtual void SaveCustomState();
 
-	afx_msg void OnAppAbout();
 	DECLARE_MESSAGE_MAP()
+	afx_msg void OnAppAbout();
+	afx_msg void OnFileSaveSettings();
 	afx_msg void OnFileOpenSettings();
 	afx_msg void OnFileOpenImage();
 };

@@ -25,7 +25,9 @@ public:
 
 // Overrides
 public:
-	virtual BOOL OnNewDocument();
+	virtual BOOL OnNewDocument() override;
+	virtual BOOL OnOpenDocument(LPCTSTR lpszPathName) override;
+	virtual BOOL OnSaveDocument(LPCTSTR lpszPathName) override;
 	virtual void Serialize(CArchive& ar);
 #ifdef SHARED_HANDLERS
 	virtual void InitializeSearchContent();
@@ -50,4 +52,10 @@ protected:
 	// Helper function that sets search content for a Search Handler
 	void SetSearchContent(const CString& value);
 #endif // SHARED_HANDLERS
+protected:
+	// file menu commands
+	//afx_msg void OnFileSaveSettings();
+	// non-virtual CDocument overrides
+	afx_msg void OnFileSave();
+	afx_msg void OnFileSaveAs();
 };

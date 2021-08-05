@@ -83,7 +83,8 @@
 #define IDS_FIND_TAB                    302
 #define IDS_EXPLORER                    305
 #define IDS_EDIT_MENU                   306
-#define IDR_TREEDOC_TYPE                 307
+#define IDR_TREEDOC_TYPE                307
+#define ID_FILE_SAVE_SETTINGS           32772
 #define ID_FILE_OPEN_SETTINGS           32773
 #define ID_FILE_OPEN_IMAGE              32774
 
