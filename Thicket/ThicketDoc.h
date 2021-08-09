@@ -58,4 +58,5 @@ protected:
 	// non-virtual CDocument overrides
 	afx_msg void OnFileSave();
 	afx_msg void OnFileSaveAs();
+	afx_msg void OnFileExportSVG();
 };

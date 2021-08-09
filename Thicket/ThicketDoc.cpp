@@ -26,6 +26,7 @@ BEGIN_MESSAGE_MAP(CThicketDoc, CDocument)
 	ON_COMMAND(ID_FILE_SAVE_SETTINGS, &CThicketDoc::OnFileSave)
 	ON_COMMAND(ID_FILE_SAVE, &CThicketDoc::OnFileSave)
     ON_COMMAND(ID_FILE_SAVE_AS, &CThicketDoc::OnFileSaveAs)
+ 	ON_COMMAND(ID_FILE_EXPORT_SVG, &CThicketDoc::OnFileExportSVG)
 END_MESSAGE_MAP()
 
 
@@ -257,6 +258,49 @@ void CThicketDoc::OnFileSaveAs()
 		SetModifiedFlag(0);
 	}
 }
+
+
+void CThicketDoc::OnFileExportSVG()
+{
+	auto pWnd = ::AfxGetMainWnd();
+
+	CFileDialog dlg(FALSE, L"svg", nullptr, OFN_EXPLORER | OFN_OVERWRITEPROMPT, L"SVG (*.svg)|*.svg||", pWnd);
+
+	fs::path filePath = (LPCTSTR)GetPathName();
+	filePath.replace_extension(L"svg");
+	if (filePath.empty())
+	{
+		fs::path curPath = fs::absolute(L".");
+		dlg.m_ofn.lpstrInitialDir = curPath.c_str();
+	}
+	else
+	{
+		dlg.m_ofn.lpstrInitialDir = filePath.c_str();
+	}
+	dlg.m_ofn.lpstrTitle = L"Save SVG";
+	CString sz(filePath.c_str());
+	dlg.m_ofn.lpstrFile = sz.GetBufferSetLength(MAX_PATH + 1);
+	dlg.m_ofn.nMaxFile = sz.GetAllocLength();
+
+	if (IDOK == dlg.DoModal())
+	{
+		fs::path path((LPCTSTR)dlg.GetPathName());
+		try
+		{
+			m_demo.saveSVG(path);
+		}
+		catch (std::exception& ex)
+		{
+			char szErr[250];
+			::strerror_s(szErr, errno);
+			CStringA msg;
+			msg.Format("saveSVG failed: %s\n\nError: %d\n%s", ex.what(), errno, szErr);
+
+			::MessageBoxA(*::AfxGetMainWnd(), msg, "Fail", MB_OK);
+		}
+	}
+}
+
 
 #pragma endregion
 
