@@ -15,7 +15,7 @@
 #define IDR_MAINFRAME                   128
 #define IDR_MAINFRAME_256               129
 #define ID_WINDOW_MANAGER               131
-#define ID_VIEW_FILEVIEW                133
+#define ID_VIEW_TRANSFORMVIEW           133
 #define ID_VIEW_CLASSVIEW               134
 #define ID_PROPERTIES                   135
 #define ID_OPEN                         136
@@ -37,7 +37,7 @@
 #define ID_PROPERTIES1                  152
 #define ID_PROPERTIES2                  153
 #define ID_EXPAND_ALL                   154
-#define IDS_FILE_VIEW                   155
+#define IDS_TRANSFORM_VIEW              155
 #define IDS_CLASS_VIEW                  156
 #define IDS_OUTPUT_WND                  157
 #define IDS_PROPERTIES_WND              158

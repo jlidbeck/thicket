@@ -13,11 +13,11 @@ class CFileViewToolBar : public CMFCToolBar
 	virtual BOOL AllowShowOnList() const { return FALSE; }
 };
 
-class CFileView : public CDockablePane
+class CTransformView : public CDockablePane
 {
 // Construction
 public:
-	CFileView() noexcept;
+	CTransformView() noexcept;
 
 	void AdjustLayout();
 	void OnChangeVisualStyle();
@@ -25,16 +25,16 @@ public:
 // Attributes
 protected:
 
-	CViewTree m_wndFileView;
+	CViewTree m_viewTree;
 	CImageList m_FileViewImages;
 	CFileViewToolBar m_wndToolBar;
 
 protected:
-	void FillFileView();
+	void FillViewTree();
 
 // Implementation
 public:
-	virtual ~CFileView();
+	virtual ~CTransformView();
 
 protected:
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
@@ -51,5 +51,7 @@ protected:
 	afx_msg void OnSetFocus(CWnd* pOldWnd);
 
 	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg void OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized);
 };
 

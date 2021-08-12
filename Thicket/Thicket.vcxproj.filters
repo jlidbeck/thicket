@@ -39,7 +39,7 @@
     <ClInclude Include="Resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="FileView.h">
+    <ClInclude Include="TransformView.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ClassView.h">
@@ -74,7 +74,7 @@
     <ClCompile Include="ThicketView.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="FileView.cpp">
+    <ClCompile Include="TransformView.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ClassView.cpp">

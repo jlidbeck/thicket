@@ -1,10 +1,12 @@
 
 #include "pch.h"
+#include "TransformView.h"
 #include "framework.h"
 #include "mainfrm.h"
-#include "FileView.h"
 #include "Resource.h"
 #include "Thicket.h"
+#include "ThicketDoc.h"
+
 
 #ifdef _DEBUG
 #undef THIS_FILE
@@ -13,17 +15,17 @@ static char THIS_FILE[]=__FILE__;
 #endif
 
 /////////////////////////////////////////////////////////////////////////////
-// CFileView
+// CTransformView
 
-CFileView::CFileView() noexcept
+CTransformView::CTransformView() noexcept
 {
 }
 
-CFileView::~CFileView()
+CTransformView::~CTransformView()
 {
 }
 
-BEGIN_MESSAGE_MAP(CFileView, CDockablePane)
+BEGIN_MESSAGE_MAP(CTransformView, CDockablePane)
 	ON_WM_CREATE()
 	ON_WM_SIZE()
 	ON_WM_CONTEXTMENU()
@@ -36,12 +38,13 @@ BEGIN_MESSAGE_MAP(CFileView, CDockablePane)
 	ON_COMMAND(ID_EDIT_CLEAR, OnEditClear)
 	ON_WM_PAINT()
 	ON_WM_SETFOCUS()
+	ON_WM_ACTIVATE()
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CWorkspaceBar message handlers
 
-int CFileView::OnCreate(LPCREATESTRUCT lpCreateStruct)
+int CTransformView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 {
 	if (CDockablePane::OnCreate(lpCreateStruct) == -1)
 		return -1;
@@ -52,15 +55,15 @@ int CFileView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	// Create view:
 	const DWORD dwViewStyle = WS_CHILD | WS_VISIBLE | TVS_HASLINES | TVS_LINESATROOT | TVS_HASBUTTONS;
 
-	if (!m_wndFileView.Create(dwViewStyle, rectDummy, this, 4))
+	if (!m_viewTree.Create(dwViewStyle, rectDummy, this, 4))
 	{
-		TRACE0("Failed to create file view\n");
+		TRACE0("Failed to create transform view\n");
 		return -1;      // fail to create
 	}
 
 	// Load view images:
 	m_FileViewImages.Create(IDB_FILE_VIEW, 16, 0, RGB(255, 0, 255));
-	m_wndFileView.SetImageList(&m_FileViewImages, TVSIL_NORMAL);
+	m_viewTree.SetImageList(&m_FileViewImages, TVSIL_NORMAL);
 
 	m_wndToolBar.Create(this, AFX_DEFAULT_TOOLBAR_STYLE, IDR_EXPLORER);
 	m_wndToolBar.LoadToolBar(IDR_EXPLORER, 0, 0, TRUE /* Is locked */);
@@ -77,56 +80,54 @@ int CFileView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	m_wndToolBar.SetRouteCommandsViaFrame(FALSE);
 
 	// Fill in some static tree view data (dummy code, nothing magic here)
-	FillFileView();
+	FillViewTree();
 	AdjustLayout();
 
 	return 0;
 }
 
-void CFileView::OnSize(UINT nType, int cx, int cy)
+void CTransformView::OnSize(UINT nType, int cx, int cy)
 {
 	CDockablePane::OnSize(nType, cx, cy);
 	AdjustLayout();
 }
 
-void CFileView::FillFileView()
+
+void CTransformView::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
 {
-	HTREEITEM hRoot = m_wndFileView.InsertItem(_T("FakeApp files"), 0, 0);
-	m_wndFileView.SetItemState(hRoot, TVIS_BOLD, TVIS_BOLD);
+	CDockablePane::OnActivate(nState, pWndOther, bMinimized);
 
-	HTREEITEM hSrc = m_wndFileView.InsertItem(_T("FakeApp Source Files"), 0, 0, hRoot);
-
-	m_wndFileView.InsertItem(_T("FakeApp.cpp"), 1, 1, hSrc);
-	m_wndFileView.InsertItem(_T("FakeApp.rc"), 1, 1, hSrc);
-	m_wndFileView.InsertItem(_T("FakeAppDoc.cpp"), 1, 1, hSrc);
-	m_wndFileView.InsertItem(_T("FakeAppView.cpp"), 1, 1, hSrc);
-	m_wndFileView.InsertItem(_T("MainFrm.cpp"), 1, 1, hSrc);
-	m_wndFileView.InsertItem(_T("pch.cpp"), 1, 1, hSrc);
-
-	HTREEITEM hInc = m_wndFileView.InsertItem(_T("FakeApp Header Files"), 0, 0, hRoot);
-
-	m_wndFileView.InsertItem(_T("FakeApp.h"), 2, 2, hInc);
-	m_wndFileView.InsertItem(_T("FakeAppDoc.h"), 2, 2, hInc);
-	m_wndFileView.InsertItem(_T("FakeAppView.h"), 2, 2, hInc);
-	m_wndFileView.InsertItem(_T("Resource.h"), 2, 2, hInc);
-	m_wndFileView.InsertItem(_T("MainFrm.h"), 2, 2, hInc);
-	m_wndFileView.InsertItem(_T("pch.h"), 2, 2, hInc);
-
-	HTREEITEM hRes = m_wndFileView.InsertItem(_T("FakeApp Resource Files"), 0, 0, hRoot);
-
-	m_wndFileView.InsertItem(_T("FakeApp.ico"), 2, 2, hRes);
-	m_wndFileView.InsertItem(_T("FakeApp.rc2"), 2, 2, hRes);
-	m_wndFileView.InsertItem(_T("FakeAppDoc.ico"), 2, 2, hRes);
-	m_wndFileView.InsertItem(_T("FakeToolbar.bmp"), 2, 2, hRes);
-
-	m_wndFileView.Expand(hRoot, TVE_EXPAND);
-	m_wndFileView.Expand(hSrc, TVE_EXPAND);
-	m_wndFileView.Expand(hInc, TVE_EXPAND);
+	// TODO: Add your message handler code here
 }
 
-void CFileView::OnContextMenu(CWnd* pWnd, CPoint point)
+void CTransformView::FillViewTree()
 {
-	CTreeCtrl* pWndTree = (CTreeCtrl*) &m_wndFileView;
+	m_viewTree.DeleteAllItems();
+
+	HTREEITEM hRoot = m_viewTree.InsertItem(_T("Transforms"), 0, 0);
+	m_viewTree.SetItemState(hRoot, TVIS_BOLD, TVIS_BOLD);
+
+	CFrameWnd* pFrameWnd = dynamic_cast<CFrameWnd*>(::AfxGetMainWnd());
+	if (!pFrameWnd) return;
+	auto f = pFrameWnd->GetActiveFrame();
+	if (!f) return;
+	auto *pDoc = dynamic_cast<CThicketDoc*>(f->GetActiveDocument());
+	if (!pDoc) return;
+
+	auto pTree = pDoc->m_demo.getTree();
+
+	for (auto const& t : pTree->transforms)
+	{
+		CString sz(t.transformMatrixKey.c_str());
+		HTREEITEM hSrc = m_viewTree.InsertItem(sz, 0, 0, hRoot);
+	}
+
+	m_viewTree.Expand(hRoot, TVE_EXPAND);
+}
+
+void CTransformView::OnContextMenu(CWnd* pWnd, CPoint point)
+{
+	CTreeCtrl* pWndTree = (CTreeCtrl*) &m_viewTree;
 	ASSERT_VALID(pWndTree);
 
 	if (pWnd != pWndTree)
@@ -153,7 +154,7 @@ void CFileView::OnContextMenu(CWnd* pWnd, CPoint point)
 	theApp.GetContextMenuManager()->ShowPopupMenu(IDR_POPUP_EXPLORER, point.x, point.y, this, TRUE);
 }
 
-void CFileView::AdjustLayout()
+void CTransformView::AdjustLayout()
 {
 	if (GetSafeHwnd() == nullptr)
 	{
@@ -166,65 +167,65 @@ void CFileView::AdjustLayout()
 	int cyTlb = m_wndToolBar.CalcFixedLayout(FALSE, TRUE).cy;
 
 	m_wndToolBar.SetWindowPos(nullptr, rectClient.left, rectClient.top, rectClient.Width(), cyTlb, SWP_NOACTIVATE | SWP_NOZORDER);
-	m_wndFileView.SetWindowPos(nullptr, rectClient.left + 1, rectClient.top + cyTlb + 1, rectClient.Width() - 2, rectClient.Height() - cyTlb - 2, SWP_NOACTIVATE | SWP_NOZORDER);
+	m_viewTree.SetWindowPos(nullptr, rectClient.left + 1, rectClient.top + cyTlb + 1, rectClient.Width() - 2, rectClient.Height() - cyTlb - 2, SWP_NOACTIVATE | SWP_NOZORDER);
 }
 
-void CFileView::OnProperties()
+void CTransformView::OnProperties()
 {
-	AfxMessageBox(_T("Properties...."));
-
+	FillViewTree();
 }
 
-void CFileView::OnFileOpen()
+void CTransformView::OnFileOpen()
+{
+	// TODO: Add your command handler code here
+	FillViewTree();
+}
+
+void CTransformView::OnFileOpenWith()
 {
 	// TODO: Add your command handler code here
 }
 
-void CFileView::OnFileOpenWith()
+void CTransformView::OnDummyCompile()
 {
 	// TODO: Add your command handler code here
 }
 
-void CFileView::OnDummyCompile()
+void CTransformView::OnEditCut()
 {
 	// TODO: Add your command handler code here
 }
 
-void CFileView::OnEditCut()
+void CTransformView::OnEditCopy()
 {
 	// TODO: Add your command handler code here
 }
 
-void CFileView::OnEditCopy()
+void CTransformView::OnEditClear()
 {
 	// TODO: Add your command handler code here
 }
 
-void CFileView::OnEditClear()
-{
-	// TODO: Add your command handler code here
-}
-
-void CFileView::OnPaint()
+void CTransformView::OnPaint()
 {
 	CPaintDC dc(this); // device context for painting
 
 	CRect rectTree;
-	m_wndFileView.GetWindowRect(rectTree);
+	m_viewTree.GetWindowRect(rectTree);
 	ScreenToClient(rectTree);
 
 	rectTree.InflateRect(1, 1);
 	dc.Draw3dRect(rectTree, ::GetSysColor(COLOR_3DSHADOW), ::GetSysColor(COLOR_3DSHADOW));
 }
 
-void CFileView::OnSetFocus(CWnd* pOldWnd)
+void CTransformView::OnSetFocus(CWnd* pOldWnd)
 {
 	CDockablePane::OnSetFocus(pOldWnd);
 
-	m_wndFileView.SetFocus();
+	m_viewTree.SetFocus();
 }
 
-void CFileView::OnChangeVisualStyle()
+void CTransformView::OnChangeVisualStyle()
 {
 	m_wndToolBar.CleanUpLockedImages();
 	m_wndToolBar.LoadBitmap(theApp.m_bHiColorIcons ? IDB_EXPLORER_24 : IDR_EXPLORER, 0, 0, TRUE /* Locked */);
@@ -251,7 +252,7 @@ void CFileView::OnChangeVisualStyle()
 	m_FileViewImages.Create(16, bmpObj.bmHeight, nFlags, 0, 0);
 	m_FileViewImages.Add(&bmp, RGB(255, 0, 255));
 
-	m_wndFileView.SetImageList(&m_FileViewImages, TVSIL_NORMAL);
+	m_viewTree.SetImageList(&m_FileViewImages, TVSIL_NORMAL);
 }
 
 
