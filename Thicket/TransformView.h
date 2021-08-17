@@ -37,6 +37,8 @@ public:
 	virtual ~CTransformView();
 
 protected:
+	DECLARE_MESSAGE_MAP()
+
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg void OnContextMenu(CWnd* pWnd, CPoint point);
@@ -49,9 +51,9 @@ protected:
 	afx_msg void OnEditClear();
 	afx_msg void OnPaint();
 	afx_msg void OnSetFocus(CWnd* pOldWnd);
-
-	DECLARE_MESSAGE_MAP()
-public:
 	afx_msg void OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized);
+	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
+public:
+	afx_msg void OnMDIActivate(BOOL bActivate, CWnd* pActivateWnd, CWnd* pDeactivateWnd);
 };
 

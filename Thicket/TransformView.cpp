@@ -32,13 +32,14 @@ BEGIN_MESSAGE_MAP(CTransformView, CDockablePane)
 	ON_COMMAND(ID_PROPERTIES, OnProperties)
 	ON_COMMAND(ID_OPEN, OnFileOpen)
 	ON_COMMAND(ID_OPEN_WITH, OnFileOpenWith)
-	ON_COMMAND(ID_DUMMY_COMPILE, OnDummyCompile)
 	ON_COMMAND(ID_EDIT_CUT, OnEditCut)
 	ON_COMMAND(ID_EDIT_COPY, OnEditCopy)
 	ON_COMMAND(ID_EDIT_CLEAR, OnEditClear)
 	ON_WM_PAINT()
 	ON_WM_SETFOCUS()
 	ON_WM_ACTIVATE()
+	ON_WM_LBUTTONDBLCLK()
+	ON_WM_MDIACTIVATE()
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -97,22 +98,23 @@ void CTransformView::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
 {
 	CDockablePane::OnActivate(nState, pWndOther, bMinimized);
 
-	// TODO: Add your message handler code here
+	FillViewTree();
 }
 
 void CTransformView::FillViewTree()
 {
+	m_viewTree.LockWindowUpdate();
 	m_viewTree.DeleteAllItems();
+
+	auto* pDoc = theApp.GetActiveDocument();
+	if (!pDoc)
+	{
+		m_viewTree.UnlockWindowUpdate();
+		return;
+	}
 
 	HTREEITEM hRoot = m_viewTree.InsertItem(_T("Transforms"), 0, 0);
 	m_viewTree.SetItemState(hRoot, TVIS_BOLD, TVIS_BOLD);
-
-	CFrameWnd* pFrameWnd = dynamic_cast<CFrameWnd*>(::AfxGetMainWnd());
-	if (!pFrameWnd) return;
-	auto f = pFrameWnd->GetActiveFrame();
-	if (!f) return;
-	auto *pDoc = dynamic_cast<CThicketDoc*>(f->GetActiveDocument());
-	if (!pDoc) return;
 
 	auto pTree = pDoc->m_demo.getTree();
 
@@ -123,11 +125,15 @@ void CTransformView::FillViewTree()
 	}
 
 	m_viewTree.Expand(hRoot, TVE_EXPAND);
+
+	m_viewTree.UnlockWindowUpdate();
 }
 
 void CTransformView::OnContextMenu(CWnd* pWnd, CPoint point)
 {
-	CTreeCtrl* pWndTree = (CTreeCtrl*) &m_viewTree;
+	FillViewTree();
+
+	CTreeCtrl* pWndTree = &m_viewTree;
 	ASSERT_VALID(pWndTree);
 
 	if (pWnd != pWndTree)
@@ -182,11 +188,6 @@ void CTransformView::OnFileOpen()
 }
 
 void CTransformView::OnFileOpenWith()
-{
-	// TODO: Add your command handler code here
-}
-
-void CTransformView::OnDummyCompile()
 {
 	// TODO: Add your command handler code here
 }
@@ -256,3 +257,65 @@ void CTransformView::OnChangeVisualStyle()
 }
 
 
+
+
+void CTransformView::OnLButtonDblClk(UINT nFlags, CPoint point)
+{
+	// never received
+	CThicketDoc *pDoc = theApp.GetActiveDocument();
+	if (!pDoc) 
+		return;
+
+	auto pTree = pDoc->m_demo.getTree();
+	if (point != CPoint(-1, -1))
+	{
+		// Select clicked item:
+		CPoint ptTree = point;
+		m_viewTree.ScreenToClient(&ptTree);
+
+		UINT flags = 0;
+		HTREEITEM hTreeItem = m_viewTree.HitTest(ptTree, &flags);
+		if (hTreeItem != nullptr)
+		{
+			//m_viewTree.SelectItem(hTreeItem);
+			qtransform t = pTree->transforms[0];
+
+			json j;
+			::to_json(j, t);
+			auto str = j.dump(4, ' ');
+
+			MessageBoxA(*this, str.c_str(), ("Transform " + t.transformMatrixKey).c_str(), 0);
+			return;
+		}
+	}
+
+	json j;
+	pTree->to_json(j);
+	auto str = j.dump(4, ' ');
+
+	MessageBoxA(*this, str.c_str(), pTree->name.c_str(), 0);
+
+	//CDockablePane::OnLButtonDblClk(nFlags, point);
+}
+
+
+//BOOL CTransformView::OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult)
+//{
+//	switch (wParam)
+//	{
+//	case NM_DBLCLK:
+//		OnLButtonDblClk(0, CPoint(-1, -1));
+//		return TRUE;
+//	}
+//
+//	return CDockablePane::OnNotify(wParam, lParam, pResult);
+//}
+
+
+void CTransformView::OnMDIActivate(BOOL bActivate, CWnd* pActivateWnd, CWnd* pDeactivateWnd)
+{
+	// never received
+	CDockablePane::OnMDIActivate(bActivate, pActivateWnd, pDeactivateWnd);
+
+	FillViewTree();
+}

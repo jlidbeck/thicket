@@ -6,6 +6,8 @@
 #include "Resource.h"
 #include "MainFrm.h"
 #include "Thicket.h"
+#include "ThicketDoc.h"
+
 
 #ifdef _DEBUG
 #undef THIS_FILE
@@ -14,7 +16,7 @@ static char THIS_FILE[]=__FILE__;
 #endif
 
 /////////////////////////////////////////////////////////////////////////////
-// CResourceViewBar
+// CPropertiesWnd
 
 CPropertiesWnd::CPropertiesWnd() noexcept
 {
@@ -38,10 +40,12 @@ BEGIN_MESSAGE_MAP(CPropertiesWnd, CDockablePane)
 	ON_UPDATE_COMMAND_UI(ID_PROPERTIES2, OnUpdateProperties2)
 	ON_WM_SETFOCUS()
 	ON_WM_SETTINGCHANGE()
+	ON_WM_CONTEXTMENU()
+	ON_REGISTERED_MESSAGE(AFX_WM_PROPERTY_CHANGED, OnPropertyChanged)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
-// CResourceViewBar message handlers
+// CPropertiesWnd message handlers
 
 void CPropertiesWnd::AdjustLayout()
 {
@@ -57,7 +61,7 @@ void CPropertiesWnd::AdjustLayout()
 
 	m_wndObjectCombo.SetWindowPos(nullptr, rectClient.left, rectClient.top, rectClient.Width(), m_nComboHeight, SWP_NOACTIVATE | SWP_NOZORDER);
 	m_wndToolBar.SetWindowPos(nullptr, rectClient.left, rectClient.top + m_nComboHeight, rectClient.Width(), cyTlb, SWP_NOACTIVATE | SWP_NOZORDER);
-	m_wndPropList.SetWindowPos(nullptr, rectClient.left, rectClient.top + m_nComboHeight + cyTlb, rectClient.Width(), rectClient.Height() -(m_nComboHeight+cyTlb), SWP_NOACTIVATE | SWP_NOZORDER);
+	m_propertyGrid.SetWindowPos(nullptr, rectClient.left, rectClient.top + m_nComboHeight + cyTlb, rectClient.Width(), rectClient.Height() -(m_nComboHeight+cyTlb), SWP_NOACTIVATE | SWP_NOZORDER);
 }
 
 int CPropertiesWnd::OnCreate(LPCREATESTRUCT lpCreateStruct)
@@ -86,7 +90,7 @@ int CPropertiesWnd::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 	m_nComboHeight = rectCombo.Height();
 
-	if (!m_wndPropList.Create(WS_VISIBLE | WS_CHILD, rectDummy, this, 2))
+	if (!m_propertyGrid.Create(WS_VISIBLE | WS_CHILD, rectDummy, this, ID_THICKET_PROPERTY_GRID))
 	{
 		TRACE0("Failed to create Properties Grid \n");
 		return -1;      // fail to create
@@ -118,7 +122,7 @@ void CPropertiesWnd::OnSize(UINT nType, int cx, int cy)
 
 void CPropertiesWnd::OnExpandAllProperties()
 {
-	m_wndPropList.ExpandAll();
+	m_propertyGrid.ExpandAll();
 }
 
 void CPropertiesWnd::OnUpdateExpandAllProperties(CCmdUI* /* pCmdUI */)
@@ -127,12 +131,12 @@ void CPropertiesWnd::OnUpdateExpandAllProperties(CCmdUI* /* pCmdUI */)
 
 void CPropertiesWnd::OnSortProperties()
 {
-	m_wndPropList.SetAlphabeticMode(!m_wndPropList.IsAlphabeticMode());
+	m_propertyGrid.SetAlphabeticMode(!m_propertyGrid.IsAlphabeticMode());
 }
 
 void CPropertiesWnd::OnUpdateSortProperties(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_wndPropList.IsAlphabeticMode());
+	pCmdUI->SetCheck(m_propertyGrid.IsAlphabeticMode());
 }
 
 void CPropertiesWnd::OnProperties1()
@@ -159,89 +163,172 @@ void CPropertiesWnd::InitPropList()
 {
 	SetPropListFont();
 
-	m_wndPropList.EnableHeaderCtrl(FALSE);
-	m_wndPropList.EnableDescriptionArea();
-	m_wndPropList.SetVSDotNetLook();
-	m_wndPropList.MarkModifiedProperties();
+	m_propertyGrid.EnableHeaderCtrl(FALSE);
+	m_propertyGrid.EnableDescriptionArea();
+	m_propertyGrid.SetVSDotNetLook();
+	m_propertyGrid.MarkModifiedProperties();
 
-	CMFCPropertyGridProperty* pGroup1 = new CMFCPropertyGridProperty(_T("Appearance"));
+	m_propertyGrid.RemoveAll();
 
-	pGroup1->AddSubItem(new CMFCPropertyGridProperty(_T("3D Look"), (_variant_t) false, _T("Specifies the window's font will be non-bold and controls will have a 3D border")));
+	auto* pDoc = theApp.GetActiveDocument();
+	if (!pDoc) return;
+	auto pTree = pDoc->m_demo.getTree();
 
-	CMFCPropertyGridProperty* pProp = new CMFCPropertyGridProperty(_T("Border"), _T("Dialog Frame"), _T("One of: None, Thin, Resizable, or Dialog Frame"));
-	pProp->AddOption(_T("None"));
-	pProp->AddOption(_T("Thin"));
-	pProp->AddOption(_T("Resizable"));
-	pProp->AddOption(_T("Dialog Frame"));
-	pProp->AllowEdit(FALSE);
+	CMFCPropertyGridProperty* pProp;
 
-	pGroup1->AddSubItem(pProp);
-	pGroup1->AddSubItem(new CMFCPropertyGridProperty(_T("Caption"), (_variant_t) _T("About"), _T("Specifies the text that will be displayed in the window's title bar")));
+	{
+		CMFCPropertyGridProperty* pGroup1 = new CMFCPropertyGridProperty(_T("Appearance"));
 
-	m_wndPropList.AddProperty(pGroup1);
+		pGroup1->AddSubItem(new CMFCPropertyGridProperty(_T("Name"), (_variant_t)pTree->name.c_str(), _T("Name")));
 
-	CMFCPropertyGridProperty* pSize = new CMFCPropertyGridProperty(_T("Window Size"), 0, TRUE);
+		pProp = new CMFCPropertyGridProperty(_T("Random Seed"), (_variant_t)pTree->randomSeed, _T("Random seed used by generator to create initial settings"), 42000);
+		pProp->EnableSpinControl(TRUE, 0, 0x7FFFFFFF);
+		pGroup1->AddSubItem(pProp);
 
-	pProp = new CMFCPropertyGridProperty(_T("Height"), (_variant_t) 250l, _T("Specifies the window's height"));
-	pProp->EnableSpinControl(TRUE, 50, 300);
-	pSize->AddSubItem(pProp);
+		m_propertyGrid.AddProperty(pGroup1);
+	}
 
-	pProp = new CMFCPropertyGridProperty( _T("Width"), (_variant_t) 150l, _T("Specifies the window's width"));
-	pProp->EnableSpinControl(TRUE, 50, 200);
-	pSize->AddSubItem(pProp);
+	{
+		CMFCPropertyGridProperty* pGroup = new CMFCPropertyGridProperty(_T("Domain"), 0, TRUE);
 
-	m_wndPropList.AddProperty(pSize);
+		auto domain = pTree->domain;
 
-	CMFCPropertyGridProperty* pGroup2 = new CMFCPropertyGridProperty(_T("Font"));
+		pProp = new CMFCPropertyGridProperty(_T("X"), (_variant_t)domain.x, _T("Specifies the domain X min"));
+		pGroup->AddSubItem(pProp);
 
-	LOGFONT lf;
-	CFont* font = CFont::FromHandle((HFONT) GetStockObject(DEFAULT_GUI_FONT));
-	font->GetLogFont(&lf);
+		pProp = new CMFCPropertyGridProperty(_T("Y"), (_variant_t)domain.y, _T("Specifies the domain Y min"));
+		pGroup->AddSubItem(pProp);
 
-	_tcscpy_s(lf.lfFaceName, _T("Arial"));
+		pProp = new CMFCPropertyGridProperty(_T("Width"), (_variant_t)domain.width, _T("Specifies the domain width"));
+		pGroup->AddSubItem(pProp);
 
-	pGroup2->AddSubItem(new CMFCPropertyGridFontProperty(_T("Font"), lf, CF_EFFECTS | CF_SCREENFONTS, _T("Specifies the default font for the window")));
-	pGroup2->AddSubItem(new CMFCPropertyGridProperty(_T("Use System Font"), (_variant_t) true, _T("Specifies that the window uses MS Shell Dlg font")));
+		pProp = new CMFCPropertyGridProperty(_T("Height"), (_variant_t)domain.height, _T("Specifies the domain height"));
+		pGroup->AddSubItem(pProp);
 
-	m_wndPropList.AddProperty(pGroup2);
+		pProp = new CMFCPropertyGridProperty(_T("Shape"), (_variant_t)(int)pTree->domainShape, _T("One of: None, Thin, Resizable, or Dialog Frame"));
+		pProp->AddOption(_T("RECT"));
+		pProp->AddOption(_T("ELLIPSE"));
+		pProp->AllowEdit(FALSE);
+		pGroup->AddSubItem(pProp);
 
-	CMFCPropertyGridProperty* pGroup3 = new CMFCPropertyGridProperty(_T("Misc"));
-	pProp = new CMFCPropertyGridProperty(_T("(Name)"), _T("Application"));
-	pProp->Enable(FALSE);
-	pGroup3->AddSubItem(pProp);
+		m_propertyGrid.AddProperty(pGroup);
+	}
 
-	CMFCPropertyGridColorProperty* pColorProp = new CMFCPropertyGridColorProperty(_T("Window Color"), RGB(210, 192, 254), nullptr, _T("Specifies the default window color"));
-	pColorProp->EnableOtherButton(_T("Other..."));
-	pColorProp->EnableAutomaticButton(_T("Default"), ::GetSysColor(COLOR_3DFACE));
-	pGroup3->AddSubItem(pColorProp);
+	{
+		CMFCPropertyGridProperty* pDrawSettingsGroup = new CMFCPropertyGridProperty(_T("Drawing"));
 
-	static const TCHAR szFilter[] = _T("Icon Files(*.ico)|*.ico|All Files(*.*)|*.*||");
-	pGroup3->AddSubItem(new CMFCPropertyGridFileProperty(_T("Icon"), TRUE, _T(""), _T("ico"), 0, szFilter, _T("Specifies the window icon")));
+		pProp = new CMFCPropertyGridProperty(_T("Polygon"), (_variant_t)(int)pTree->polygon.size(), _T("Primary polygon"));
+		pProp->AllowEdit(0);
+		pGroup->AddSubItem(pProp);
 
-	pGroup3->AddSubItem(new CMFCPropertyGridFileProperty(_T("Folder"), _T("c:\\")));
+		pProp = new CMFCPropertyGridProperty(_T("Line Thickness"), (_variant_t)pTree->lineThickness, _T("Polygon outline line thickness"));
+		pProp->EnableSpinControl(TRUE, 0, 10);
+		pDrawSettingsGroup->AddSubItem(pProp);
 
-	m_wndPropList.AddProperty(pGroup3);
+		CMFCPropertyGridColorProperty* pColorProp = new CMFCPropertyGridColorProperty(
+			_T("Line Color"),
+			RGB((int)(0.5 + 255.0 * pTree->lineColor[2]), 
+				(int)(0.5 + 255.0 * pTree->lineColor[1]), 
+				(int)(0.5 + 255.0 * pTree->lineColor[0])),
+			0,
+			_T("Polygon outline line color"));
+		pColorProp->EnableOtherButton(_T("Other..."));
+		pColorProp->EnableAutomaticButton(_T("Default"), RGB(255, 255, 255));
+		pGroup->AddSubItem(pColorProp);
 
-	CMFCPropertyGridProperty* pGroup4 = new CMFCPropertyGridProperty(_T("Hierarchy"));
+		m_wndPropList.AddProperty(pGroup);
+	}
 
-	CMFCPropertyGridProperty* pGroup41 = new CMFCPropertyGridProperty(_T("First sub-level"));
-	pGroup4->AddSubItem(pGroup41);
+	{
+		CString groupName;
+		groupName.Format(_T("Transforms [%zu]"), pTree->transforms.size());
 
-	CMFCPropertyGridProperty* pGroup411 = new CMFCPropertyGridProperty(_T("Second sub-level"));
-	pGroup41->AddSubItem(pGroup411);
+		CMFCPropertyGridProperty* pTransformsGroup = new CMFCPropertyGridProperty(groupName, 0, TRUE);
 
-	pGroup411->AddSubItem(new CMFCPropertyGridProperty(_T("Item 1"), (_variant_t) _T("Value 1"), _T("This is a description")));
-	pGroup411->AddSubItem(new CMFCPropertyGridProperty(_T("Item 2"), (_variant_t) _T("Value 2"), _T("This is a description")));
-	pGroup411->AddSubItem(new CMFCPropertyGridProperty(_T("Item 3"), (_variant_t) _T("Value 3"), _T("This is a description")));
+		for (auto const& t : pTree->transforms)
+		{
+			CString name;
+			auto det = cv::determinant(t.transformMatrix);
+			name.Format(_T("%hs (det=%lf)"), t.transformMatrixKey.c_str(), det);
 
-	pGroup4->Expand(FALSE);
-	m_wndPropList.AddProperty(pGroup4);
+			cv::Scalar_<float> hlsa;
+			if (t.colorTransform.asHlsSink(hlsa[0], hlsa[1], hlsa[2], hlsa[3]))
+			{
+				cv::Scalar bgra = util::cvtColor(hlsa, cv::ColorConversionCodes::COLOR_HLS2BGR);
+				CMFCPropertyGridColorProperty* pColorProp = new CMFCPropertyGridColorProperty(
+					name,
+					RGB((int)(0.5 + 255.0 * bgra[2]),
+						(int)(0.5 + 255.0 * bgra[1]),
+						(int)(0.5 + 255.0 * bgra[0])),
+					0,
+					_T("Color Sink"));
+				pTransformsGroup->AddSubItem(pColorProp);
+			}
+			else
+			{
+				pProp = new CMFCPropertyGridProperty(name, (_variant_t)det, _T("2D Transform"));
+				pProp->AllowEdit(0);
+				pTransformsGroup->AddSubItem(pProp);
+			}
+		}
+
+		pGeometryGroup->AddSubItem(pTransformsGroup);
+
+		pGeometryGroup->Expand(1);
+		m_propertyGrid.AddProperty(pGeometryGroup);
+	}
+
+	{
+		CMFCPropertyGridProperty* pGroup2 = new CMFCPropertyGridProperty(_T("Font"));
+
+		LOGFONT lf;
+		CFont* font = CFont::FromHandle((HFONT)GetStockObject(DEFAULT_GUI_FONT));
+		font->GetLogFont(&lf);
+
+		_tcscpy_s(lf.lfFaceName, _T("Arial"));
+
+		pGroup2->AddSubItem(new CMFCPropertyGridFontProperty(_T("Font"), lf, CF_EFFECTS | CF_SCREENFONTS, _T("Specifies the default font for the window")));
+		pGroup2->AddSubItem(new CMFCPropertyGridProperty(_T("Use System Font"), (_variant_t)true, _T("Specifies that the window uses MS Shell Dlg font")));
+
+		m_propertyGrid.AddProperty(pGroup2);
+	}
+
+	{
+		CMFCPropertyGridProperty* pGroup3 = new CMFCPropertyGridProperty(_T("Misc"));
+		pProp = new CMFCPropertyGridProperty(_T("(Name)"), _T("Application"));
+		pProp->Enable(FALSE);
+		pGroup3->AddSubItem(pProp);
+
+		static const TCHAR szFilter[] = _T("Icon Files(*.ico)|*.ico|All Files(*.*)|*.*||");
+		pGroup3->AddSubItem(new CMFCPropertyGridFileProperty(_T("Icon"), TRUE, _T(""), _T("ico"), 0, szFilter, _T("Specifies the window icon")));
+
+		pGroup3->AddSubItem(new CMFCPropertyGridFileProperty(_T("Folder"), _T("c:\\")));
+
+		m_propertyGrid.AddProperty(pGroup3);
+	}
+
+	{
+		CMFCPropertyGridProperty* pGroup4 = new CMFCPropertyGridProperty(_T("Hierarchy"));
+
+		CMFCPropertyGridProperty* pGroup41 = new CMFCPropertyGridProperty(_T("First sub-level"));
+		pGroup4->AddSubItem(pGroup41);
+
+		CMFCPropertyGridProperty* pGroup411 = new CMFCPropertyGridProperty(_T("Second sub-level"));
+		pGroup41->AddSubItem(pGroup411);
+
+		pGroup411->AddSubItem(new CMFCPropertyGridProperty(_T("Item 1"), (_variant_t)_T("Value 1"), _T("This is a description")));
+		pGroup411->AddSubItem(new CMFCPropertyGridProperty(_T("Item 2"), (_variant_t)_T("Value 2"), _T("This is a description")));
+		pGroup411->AddSubItem(new CMFCPropertyGridProperty(_T("Item 3"), (_variant_t)_T("Value 3"), _T("This is a description")));
+
+		pGroup4->Expand(FALSE);
+		m_propertyGrid.AddProperty(pGroup4);
+	}
 }
 
 void CPropertiesWnd::OnSetFocus(CWnd* pOldWnd)
 {
 	CDockablePane::OnSetFocus(pOldWnd);
-	m_wndPropList.SetFocus();
+	m_propertyGrid.SetFocus();
 }
 
 void CPropertiesWnd::OnSettingChange(UINT uFlags, LPCTSTR lpszSection)
@@ -268,6 +355,127 @@ void CPropertiesWnd::SetPropListFont()
 
 	m_fntPropList.CreateFontIndirect(&lf);
 
-	m_wndPropList.SetFont(&m_fntPropList);
+	m_propertyGrid.SetFont(&m_fntPropList);
 	m_wndObjectCombo.SetFont(&m_fntPropList);
+}
+
+
+void CPropertiesWnd::OnContextMenu(CWnd* /*pWnd*/, CPoint /*point*/)
+{
+	InitPropList();
+}
+
+LRESULT CPropertiesWnd::OnPropertyChanged(
+	__in WPARAM wparam,
+	__in LPARAM lparam)
+{
+	// Parameters:
+	// [in] wparam: the control ID of the CMFCPropertyGridCtrl that changed.
+	// [in] lparam: pointer to the CMFCPropertyGridProperty that changed.
+
+	// Return value:
+	// Not used.
+
+	// Cast the lparam to a property.
+	CMFCPropertyGridProperty* pProperty = (CMFCPropertyGridProperty*)lparam;
+
+	//VARIANT varChildren;
+	//m_propertyGrid.get_accSelection(&varChildren);
+
+	auto* pDoc = theApp.GetActiveDocument();
+	if (!pDoc) 
+		return 0;
+	auto pTree = pDoc->m_demo.getTree();
+
+	// At this point you could simply pass pProperty to the appropriate object
+	// and let it handle its own data validation. However, the wparam can be used
+	// to give additional context to the property. For example, if you have two 
+	// different class of object in your application, it makes sense to have two
+	// seaprate property grid controls (one for each object). The following switch
+	// deals with this scenario. 
+
+	// Determine which property grid was changed (wparam is the control ID).
+	switch (wparam)
+	{
+	case ID_THICKET_PROPERTY_GRID:
+	{
+		auto rs = pTree->getRenderSettings();
+
+		switch (pProperty->GetData())
+		{
+		case 42000:	// random seed
+			pTree->setRandomSeed(pProperty->GetValue().intVal);
+			pDoc->m_demo.restart();
+			break;
+		case 42001:	// render size
+			rs.renderSize.width = pProperty->GetValue().intVal;
+			pTree->m_renderSettings = (rs);
+			pDoc->m_demo.restart();
+			break;
+		case 42002:	// render size
+			rs.renderSize.height = pProperty->GetValue().intVal;
+			pTree->m_renderSettings = (rs);
+			pDoc->m_demo.restart();
+			break;
+		case 42005:	// line thickness
+			rs.lineThickness = pProperty->GetValue().intVal;
+			pTree->m_renderSettings = (rs);
+			pDoc->m_demo.restart();
+			break;
+		case 42010:	// line color
+		{
+			COLORREF rgb = pProperty->GetValue().uintVal;
+			rs.lineColor = cv::Scalar(GetBValue(rgb), GetGValue(rgb), GetRValue(rgb));
+			pTree->m_renderSettings = (rs);
+			pDoc->m_demo.restart();
+			break;
+		}
+		case 42011:	// background color
+		{
+			COLORREF rgb = pProperty->GetValue().uintVal;
+			rs.backgroundColor = cv::Scalar(GetBValue(rgb), GetGValue(rgb), GetRValue(rgb));
+			pTree->m_renderSettings = (rs);
+			pDoc->m_demo.restart();
+			break;
+		}
+		}
+
+	}	// case ID_THICKET_PROPERTY_GRID
+	break;
+
+	default:
+		MessageBox(_T("Something changed"));
+	}
+
+	return 0;
+}
+
+
+//void CPropertiesWnd::OnPropertyChanged(NMHDR* pNMHDR, LRESULT* pResult)
+//{
+//	CMFCPropertyGridProperty* pProp = reinterpret_cast<CMFCPropertyGridProperty*>(pNMHDR);
+//
+//	VARIANT varChildren;
+//	m_propertyGrid.get_accSelection(&varChildren);
+//
+//	auto* pDoc = theApp.GetActiveDocument();
+//	if (!pDoc) return;
+//	auto pTree = pDoc->m_demo.getTree();
+//
+//	*pResult = 0;
+//}
+
+void CPropertiesWnd::OnMDIActivate(BOOL bActivate, CWnd* pActivateWnd, CWnd* pDeactivateWnd)
+{
+	CDockablePane::OnMDIActivate(bActivate, pActivateWnd, pDeactivateWnd);
+
+	InitPropList();
+}
+
+
+void CPropertiesWnd::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
+{
+	CDockablePane::OnActivate(nState, pWndOther, bMinimized);
+
+	InitPropList();
 }

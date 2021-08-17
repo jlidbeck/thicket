@@ -1,6 +1,10 @@
 
 #pragma once
 
+#include <afxpropertygridctrl.h>
+#include "ThicketPropertyGridCtrl.h"
+
+
 class CPropertiesToolBar : public CMFCToolBar
 {
 public:
@@ -24,15 +28,15 @@ public:
 public:
 	void SetVSDotNetLook(BOOL bSet)
 	{
-		m_wndPropList.SetVSDotNetLook(bSet);
-		m_wndPropList.SetGroupNameFullWidth(bSet);
+		m_propertyGrid.SetVSDotNetLook(bSet);
+		m_propertyGrid.SetGroupNameFullWidth(bSet);
 	}
 
 protected:
 	CFont m_fntPropList;
 	CComboBox m_wndObjectCombo;
 	CPropertiesToolBar m_wndToolBar;
-	CMFCPropertyGridCtrl m_wndPropList;
+	CThicketPropertyGridCtrl m_propertyGrid;
 
 // Implementation
 public:
@@ -58,5 +62,8 @@ protected:
 	void SetPropListFont();
 
 	int m_nComboHeight;
+public:
+	afx_msg void OnContextMenu(CWnd* /*pWnd*/, CPoint /*point*/);
+	afx_msg LRESULT OnPropertyChanged(__in WPARAM wparam, __in LPARAM lparam);
 };
 

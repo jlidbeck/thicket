@@ -20,7 +20,7 @@
 #define ID_PROPERTIES                   135
 #define ID_OPEN                         136
 #define ID_OPEN_WITH                    137
-#define ID_DUMMY_COMPILE                138
+#define ID_THICKET_PROPERTY_GRID        138
 #define ID_CLASS_ADD_MEMBER_FUNCTION    139
 #define ID_CLASS_ADD_MEMBER_VARIABLE    140
 #define ID_CLASS_DEFINITION             141
