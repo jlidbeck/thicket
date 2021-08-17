@@ -202,7 +202,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="ChildFrm.h" />
-    <ClInclude Include="ClassView.h" />
+    <ClInclude Include="JsonView.h" />
     <ClInclude Include="TransformView.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="MainFrm.h" />
@@ -220,7 +220,7 @@
     <ClCompile Include="..\tree\tree.cpp" />
     <ClCompile Include="..\tree\treedemo.cpp" />
     <ClCompile Include="ChildFrm.cpp" />
-    <ClCompile Include="ClassView.cpp" />
+    <ClCompile Include="JsonView.cpp" />
     <ClCompile Include="TransformView.cpp" />
     <ClCompile Include="MainFrm.cpp" />
     <ClCompile Include="OutputWnd.cpp" />

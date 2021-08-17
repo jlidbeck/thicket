@@ -13,22 +13,22 @@ class CClassToolBar : public CMFCToolBar
 	virtual BOOL AllowShowOnList() const { return FALSE; }
 };
 
-class CClassView : public CDockablePane
+class CJsonView : public CDockablePane
 {
 public:
-	CClassView() noexcept;
-	virtual ~CClassView();
+	CJsonView() noexcept;
+	virtual ~CJsonView();
 
 	void AdjustLayout();
 	void OnChangeVisualStyle();
 
 protected:
 	CClassToolBar m_wndToolBar;
-	CViewTree m_wndClassView;
+	CViewTree m_treeControl;
 	CImageList m_ClassViewImages;
 	UINT m_nCurrSort;
 
-	void FillClassView();
+	void PopulateView();
 
 // Overrides
 public:
@@ -50,5 +50,7 @@ protected:
 	afx_msg void OnUpdateSort(CCmdUI* pCmdUI);
 
 	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg void OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized);
 };
 

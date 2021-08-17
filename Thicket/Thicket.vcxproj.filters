@@ -42,7 +42,7 @@
     <ClInclude Include="TransformView.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ClassView.h">
+    <ClInclude Include="JsonView.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ViewTree.h">
@@ -77,7 +77,7 @@
     <ClCompile Include="TransformView.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ClassView.cpp">
+    <ClCompile Include="JsonView.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ViewTree.cpp">

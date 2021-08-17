@@ -4,7 +4,7 @@
 
 #pragma once
 #include "TransformView.h"
-#include "ClassView.h"
+#include "JsonView.h"
 #include "OutputWnd.h"
 #include "PropertiesWnd.h"
 
@@ -39,7 +39,7 @@ protected:  // control bar embedded members
 	CMFCStatusBar     m_wndStatusBar;
 	CMFCToolBarImages m_UserImages;
 	CTransformView    m_wndTransformView;
-	CClassView        m_wndClassView;
+	CJsonView         m_wndClassView;
 	COutputWnd        m_wndOutput;
 	CPropertiesWnd    m_wndProperties;
 
