@@ -21,14 +21,14 @@
 // CThicketApp
 
 BEGIN_MESSAGE_MAP(CThicketApp, CWinAppEx)
-	ON_COMMAND(ID_APP_ABOUT, &CThicketApp::OnAppAbout)
-	// Standard file based document commands
-	ON_COMMAND(ID_FILE_NEW, &CWinAppEx::OnFileNew)
-	ON_COMMAND(ID_FILE_SAVE_SETTINGS, &CThicketApp::OnFileSaveSettings)
-	ON_COMMAND(ID_FILE_OPEN_SETTINGS, &CThicketApp::OnFileOpenSettings)
-	ON_COMMAND(ID_FILE_OPEN_IMAGE, &CThicketApp::OnFileOpenImage)
-	// Standard print setup command
-	ON_COMMAND(ID_FILE_PRINT_SETUP, &CWinAppEx::OnFilePrintSetup)
+    ON_COMMAND(ID_APP_ABOUT, &CThicketApp::OnAppAbout)
+    // Standard file based document commands
+    ON_COMMAND(ID_FILE_NEW, &CWinAppEx::OnFileNew)
+    ON_COMMAND(ID_FILE_SAVE_SETTINGS, &CThicketApp::OnFileSaveSettings)
+    ON_COMMAND(ID_FILE_OPEN_SETTINGS, &CThicketApp::OnFileOpenSettings)
+    ON_COMMAND(ID_FILE_OPEN_IMAGE, &CThicketApp::OnFileOpenImage)
+    // Standard print setup command
+    ON_COMMAND(ID_FILE_PRINT_SETUP, &CWinAppEx::OnFilePrintSetup)
 END_MESSAGE_MAP()
 
 
@@ -229,61 +229,79 @@ void CThicketApp::SaveCustomState()
 {
 }
 
+//
+
+CThicketDoc* CThicketApp::GetActiveDocument()
+{
+    CFrameWnd* pFrameWnd = dynamic_cast<CFrameWnd*>(::AfxGetMainWnd());
+    if (!pFrameWnd) 
+        return nullptr;
+
+    auto f = pFrameWnd->GetActiveFrame();
+    if (!f) 
+        return nullptr;
+
+    return dynamic_cast<CThicketDoc*>(f->GetActiveDocument());
+}
+
+
 // CThicketApp message handlers
 
 
 void CThicketApp::OnFileSaveSettings()
 {
-	auto pWnd = ::AfxGetMainWnd();
+    auto pWnd = ::AfxGetMainWnd();
 
-	CFileDialog dlg(TRUE, L"settings.json", nullptr, OFN_EXPLORER, L"settings.json|*.settings.json||", pWnd);
-	CString sz;
+    CFileDialog dlg(TRUE, L"settings.json", nullptr, OFN_EXPLORER, L"settings.json|*.settings.json||", pWnd);
+    CString sz;
 
-	fs::path curPath = fs::absolute(L".");
-	dlg.m_ofn.lpstrInitialDir = curPath.c_str();
-	dlg.m_ofn.lpstrFile = sz.GetBufferSetLength(MAX_PATH + 1);
-	dlg.m_ofn.nMaxFile = sz.GetAllocLength();
+    fs::path curPath = fs::absolute(L".");
+    dlg.m_ofn.lpstrInitialDir = curPath.c_str();
+    dlg.m_ofn.lpstrFile = sz.GetBufferSetLength(MAX_PATH + 1);
+    dlg.m_ofn.nMaxFile = sz.GetAllocLength();
 
-	if (IDOK == dlg.DoModal())
-	{
-		this->SaveAllModified();
-	}
+    if (IDOK == dlg.DoModal())
+    {
+        this->SaveAllModified();
+    }
 }
 
 
 void CThicketApp::OnFileOpenSettings()
 {
-	auto pWnd = ::AfxGetMainWnd();
+    auto pWnd = ::AfxGetMainWnd();
 
-	CFileDialog dlg(TRUE, nullptr, nullptr, OFN_EXPLORER | OFN_FILEMUSTEXIST, L"settings.json|*.settings.json|PNG|*.png|All Files|*.*||", pWnd);
-	CString sz;
+    CFileDialog dlg(TRUE, nullptr, nullptr, OFN_EXPLORER | OFN_FILEMUSTEXIST, L"settings.json|*.settings.json|PNG|*.png|All Files|*.*||", pWnd);
+    CString sz;
 
-	fs::path curPath = fs::absolute(L".");
-	dlg.m_ofn.lpstrInitialDir = curPath.c_str();
-	dlg.m_ofn.lpstrFile = sz.GetBufferSetLength(MAX_PATH + 1);
-	dlg.m_ofn.nMaxFile = sz.GetAllocLength();
+    fs::path curPath = fs::absolute(L".");
+    dlg.m_ofn.lpstrInitialDir = curPath.c_str();
+    dlg.m_ofn.lpstrFile = sz.GetBufferSetLength(MAX_PATH + 1);
+    dlg.m_ofn.nMaxFile = sz.GetAllocLength();
 
-	if (IDOK == dlg.DoModal())
-	{
-		this->OpenDocumentFile(dlg.GetPathName());
-	}
+    if (IDOK == dlg.DoModal())
+    {
+        this->OpenDocumentFile(dlg.GetPathName());
+    }
 }
 
 
 void CThicketApp::OnFileOpenImage()
 {
-	auto pWnd = ::AfxGetMainWnd();
+    auto pWnd = ::AfxGetMainWnd();
 
 	CFileDialog dlg(TRUE, nullptr, nullptr, OFN_EXPLORER | OFN_FILEMUSTEXIST, L"PNG Images|*.png|Images|*.jpg;*.jpeg;*.png|All (*.*)|*.*||", pWnd);
 	CString sz;
 
-	fs::path curPath = fs::absolute(L".");
-	dlg.m_ofn.lpstrInitialDir = curPath.c_str();
-	dlg.m_ofn.lpstrFile = sz.GetBufferSetLength(MAX_PATH + 1);
-	dlg.m_ofn.nMaxFile = sz.GetAllocLength();
+    fs::path curPath = fs::absolute(L".");
+    dlg.m_ofn.lpstrInitialDir = curPath.c_str();
+    dlg.m_ofn.lpstrFile = sz.GetBufferSetLength(MAX_PATH + 1);
+    dlg.m_ofn.nMaxFile = sz.GetAllocLength();
 
-	if (IDOK == dlg.DoModal())
-	{
-		this->OpenDocumentFile(dlg.GetPathName());
-	}
+    if (IDOK == dlg.DoModal())
+    {
+        // default implementation of CWinAppEx::OpenDocumentFile 
+        // initializes a CThicketDoc instance and invokes OnOpenDocument on it
+        this->OpenDocumentFile(dlg.GetPathName());
+    }
 }

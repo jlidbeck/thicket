@@ -10,6 +10,9 @@
 #include "resource.h"       // main symbols
 
 
+class CThicketDoc;
+
+
 // CThicketApp:
 // See Thicket.cpp for the implementation of this class
 //
@@ -18,7 +21,6 @@ class CThicketApp : public CWinAppEx
 {
 public:
 	CThicketApp() noexcept;
-
 
 // Overrides
 public:
@@ -32,6 +34,8 @@ public:
 	virtual void PreLoadState();
 	virtual void LoadCustomState();
 	virtual void SaveCustomState();
+
+	CThicketDoc* GetActiveDocument();
 
 	DECLARE_MESSAGE_MAP()
 	afx_msg void OnAppAbout();
