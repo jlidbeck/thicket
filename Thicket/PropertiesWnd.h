@@ -65,5 +65,6 @@ protected:
 public:
 	afx_msg void OnContextMenu(CWnd* /*pWnd*/, CPoint /*point*/);
 	afx_msg LRESULT OnPropertyChanged(__in WPARAM wparam, __in LPARAM lparam);
+	afx_msg void OnUpdateUIState(UINT /*nAction*/, UINT /*nUIElement*/);
 };
 

@@ -42,6 +42,7 @@ BEGIN_MESSAGE_MAP(CPropertiesWnd, CDockablePane)
 	ON_WM_SETTINGCHANGE()
 	ON_WM_CONTEXTMENU()
 	ON_REGISTERED_MESSAGE(AFX_WM_PROPERTY_CHANGED, OnPropertyChanged)
+	ON_WM_UPDATEUISTATE()
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -96,8 +97,6 @@ int CPropertiesWnd::OnCreate(LPCREATESTRUCT lpCreateStruct)
 		return -1;      // fail to create
 	}
 
-	InitPropList();
-
 	m_wndToolBar.Create(this, AFX_DEFAULT_TOOLBAR_STYLE, IDR_PROPERTIES);
 	m_wndToolBar.LoadToolBar(IDR_PROPERTIES, 0, 0, TRUE /* Is locked */);
 	m_wndToolBar.CleanUpLockedImages();
@@ -111,6 +110,10 @@ int CPropertiesWnd::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	m_wndToolBar.SetRouteCommandsViaFrame(FALSE);
 
 	AdjustLayout();
+
+	// does nothing here
+	InitPropList();
+
 	return 0;
 }
 
@@ -475,3 +478,9 @@ LRESULT CPropertiesWnd::OnPropertyChanged(
 //	*pResult = 0;
 //}
 
+
+
+void CPropertiesWnd::OnUpdateUIState(UINT /*nAction*/, UINT /*nUIElement*/)
+{
+	InitPropList();
+}

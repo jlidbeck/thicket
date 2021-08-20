@@ -27,13 +27,13 @@ BEGIN_MESSAGE_MAP(CThicketView, CScrollView)
 	ON_COMMAND(ID_FILE_PRINT, &CScrollView::OnFilePrint)
 	ON_COMMAND(ID_FILE_PRINT_DIRECT, &CScrollView::OnFilePrint)
 	ON_COMMAND(ID_FILE_PRINT_PREVIEW, &CThicketView::OnFilePrintPreview)
+	ON_WM_CREATE()
+	ON_WM_DESTROY()
+	ON_WM_SHOWWINDOW()
 	ON_WM_CONTEXTMENU()
 	ON_WM_RBUTTONUP()
-	ON_WM_DESTROY()
 	ON_WM_CHAR()
-	ON_WM_ACTIVATE()
-	ON_WM_SHOWWINDOW()
-	ON_WM_CREATE()
+	ON_WM_LBUTTONDOWN()
 END_MESSAGE_MAP()
 
 // CThicketView construction/destruction
@@ -96,7 +96,7 @@ void CThicketView::OnDraw(CDC* pDC)
 			0, 0, m_mat.cols, m_mat.rows,
 			m_mat.data, (BITMAPINFO*)&bi, DIB_RGB_COLORS, SRCCOPY);
 
-		pDC->SelectClipRgn(nullptr);
+		//pDC->SelectClipRgn(nullptr);
 	}
 }
 
@@ -155,6 +155,46 @@ void CThicketView::OnContextMenu(CWnd* /* pWnd */, CPoint point)
 #ifndef SHARED_HANDLERS
 	theApp.GetContextMenuManager()->ShowPopupMenu(IDR_POPUP_EDIT, point.x, point.y, this, TRUE);
 #endif
+}
+
+void CThicketView::OnLButtonDown(UINT nFlags, CPoint point)
+{
+	// TODO: Add your message handler code here and/or call default
+
+	auto pDoc = GetDocument();
+
+	if (pDoc && !m_mat.empty())
+	{
+		CClientDC dc(this);
+		OnPrepareDC(&dc);
+		dc.LPtoDP(&point);
+
+		auto pt = pDoc->m_demo.canvas.canvasToModel(cv::Point2f(point.x, point.y));
+
+		auto pTree = pDoc->m_demo.getTree();
+
+		std::vector<qnode> nodes;
+
+		// display info on node
+		pTree->getNodesIntersecting(cv::Rect2f(pt, cv::Size2f(0, 0)), nodes);
+		if (!nodes.empty())
+		{
+			std::ostringstream str;
+			for (auto& node : nodes)
+			{
+				vector<string> lineage;
+				pTree->getLineage(node, lineage);
+				str << "Node[" << node.id << "]:";
+				for (auto& tname : lineage)
+					str << " " << tname;
+				str << endl;
+			}
+
+			MessageBox(CString(str.str().c_str()));
+		}
+	}
+
+	CScrollView::OnLButtonDown(nFlags, point);
 }
 
 
