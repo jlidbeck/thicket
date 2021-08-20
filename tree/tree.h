@@ -34,6 +34,23 @@ typedef cv::Matx<float, 4, 4> Matx44;
 
 #pragma region qcanvas
 
+
+struct RenderSettings
+{
+    cv::Size renderSizePreview = cv::Size(200, 200);
+    cv::Size renderSizeHD = cv::Size(2000, 1500);
+    cv::Size renderSize = renderSizePreview;
+
+    // colors stored as BGR
+    //cv::Scalar backgroundColor  = cv::Scalar(  0,   0,   0);
+    //cv::Scalar lineColor        = cv::Scalar(255, 255, 255);
+    //int        lineThickness    = 0;
+
+    // padding, in model units
+    float imagePadding = 0.1f;
+};
+
+
 class qcanvas
 {
     Matx33          m_globalTransform;
@@ -49,12 +66,18 @@ public:
 
     svg::Document const & getSVG() const { return m_svgDocument; }
 
-    void create(cv::Mat im)
+    //void create(cv::Mat im)
+    void create(RenderSettings const &rs)
     {
-        m_image = im;
+        if (!(rs.renderSize.width > 0 && rs.renderSize.height > 0))
+            throw std::exception("Invalid render size");
+        
+        //m_renderSettings = rs;
 
-        // Match SVG dimensions to pixel size
-        m_svgDocument = svg::Document(svg::Layout(svg::Dimensions(im.cols, im.rows), svg::Layout::Origin::TopLeft)); // no flip, no scale
+        //m_image = im;
+        m_image = cv::Mat3b(rs.renderSize);
+
+        clear();
     }
 
     void clear()
@@ -63,7 +86,10 @@ public:
         m_image = 0;
 
         // clear vector data
-        m_svgDocument = svg::Document(svg::Layout(svg::Dimensions(m_image.cols, m_image.rows), svg::Layout::Origin::TopLeft)); // no flip, no scale
+        m_svgDocument = svg::Document(
+            svg::Layout(
+                svg::Dimensions(m_image.cols, m_image.rows), 
+                svg::Layout::Origin::TopLeft)); // no flip, no scale
 
         // draw image border
         svg::Polygon border(svg::Stroke(1, svg::Color(55, 55, 55)));
@@ -77,7 +103,12 @@ public:
     // sets global transform map to map provided domain to m_image, centered, vertically flipped
     void setTransformToFit(cv::Rect_<float> const &domain, float buffer)
     {
-        if (m_image.empty()) throw std::exception("Image is empty");
+        if (m_image.empty()) 
+            throw std::exception("Image is empty");
+        if (!(m_image.cols > 0 && m_image.rows > 0))
+            throw std::exception("Invalid image size");
+        //if (m_image.size() != m_renderSettings.renderSize)
+        //    throw std::exception("Image not initialized");
 
         m_globalTransform = util::transform3x3::centerAndFit(
             domain, 
@@ -308,7 +339,8 @@ public:
     double gestationRandomness = 0.0;
 
     // draw settings
-    cv::Scalar lineColor = cv::Scalar(0);
+    cv::Scalar backgroundColor = cv::Scalar(0);
+    cv::Scalar lineColor       = cv::Scalar(0);
     int lineThickness = 0;
 
     // model
@@ -332,7 +364,7 @@ public:
 
 #pragma region Serialization
 
-    friend std::string to_string(qtree const& tree);
+    //friend std::string to_string(qtree const& tree);
 
     //  Extending classes should override and invoke the base member as necessary
     virtual void to_json(json &j) const
