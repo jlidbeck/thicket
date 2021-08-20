@@ -217,11 +217,13 @@ void CPropertiesWnd::InitPropList()
 	{
 		CMFCPropertyGridProperty* pDrawSettingsGroup = new CMFCPropertyGridProperty(_T("Drawing"));
 
-		pProp = new CMFCPropertyGridProperty(_T("Polygon"), (_variant_t)(int)pTree->polygon.size(), _T("Primary polygon"));
-		pProp->AllowEdit(0);
-		pGroup->AddSubItem(pProp);
+		RenderSettings const& rs = pDoc->m_demo.getRenderSettings();
+		pProp = new CMFCPropertyGridProperty(_T("Render Size X"), (_variant_t)rs.renderSize.width, _T("Render size X"), 42001);
+		pDrawSettingsGroup->AddSubItem(pProp);
+		pProp = new CMFCPropertyGridProperty(_T("Render Size Y"), (_variant_t)rs.renderSize.height, _T("Render size Y"), 42002);
+		pDrawSettingsGroup->AddSubItem(pProp);
 
-		pProp = new CMFCPropertyGridProperty(_T("Line Thickness"), (_variant_t)pTree->lineThickness, _T("Polygon outline line thickness"));
+		pProp = new CMFCPropertyGridProperty(_T("Line Thickness"), (_variant_t)pTree->lineThickness, _T("Polygon outline line thickness"), 42005);
 		pProp->EnableSpinControl(TRUE, 0, 10);
 		pDrawSettingsGroup->AddSubItem(pProp);
 
@@ -231,15 +233,23 @@ void CPropertiesWnd::InitPropList()
 				(int)(0.5 + 255.0 * pTree->lineColor[1]), 
 				(int)(0.5 + 255.0 * pTree->lineColor[0])),
 			0,
-			_T("Polygon outline line color"));
+			_T("Polygon outline line color"),
+			42010);
 		pColorProp->EnableOtherButton(_T("Other..."));
 		pColorProp->EnableAutomaticButton(_T("Default"), RGB(255, 255, 255));
-		pGroup->AddSubItem(pColorProp);
+		pDrawSettingsGroup->AddSubItem(pColorProp);
 
-		m_wndPropList.AddProperty(pGroup);
+		m_propertyGrid.AddProperty(pDrawSettingsGroup);
+		pDrawSettingsGroup->Expand(1);
 	}
 
 	{
+		CMFCPropertyGridProperty* pGeometryGroup = new CMFCPropertyGridProperty(_T("Geometry"));
+
+		pProp = new CMFCPropertyGridProperty(_T("Polygon"), (_variant_t)(int)pTree->polygon.size(), _T("Primary polygon"));
+		pProp->AllowEdit(0);
+		pGeometryGroup->AddSubItem(pProp);
+
 		CString groupName;
 		groupName.Format(_T("Transforms [%zu]"), pTree->transforms.size());
 
@@ -399,7 +409,7 @@ LRESULT CPropertiesWnd::OnPropertyChanged(
 	{
 	case ID_THICKET_PROPERTY_GRID:
 	{
-		auto rs = pTree->getRenderSettings();
+		auto rs = pDoc->m_demo.getRenderSettings();
 
 		switch (pProperty->GetData())
 		{
@@ -409,32 +419,32 @@ LRESULT CPropertiesWnd::OnPropertyChanged(
 			break;
 		case 42001:	// render size
 			rs.renderSize.width = pProperty->GetValue().intVal;
-			pTree->m_renderSettings = (rs);
+			pDoc->m_demo.setRenderSettings(rs);
 			pDoc->m_demo.restart();
 			break;
 		case 42002:	// render size
 			rs.renderSize.height = pProperty->GetValue().intVal;
-			pTree->m_renderSettings = (rs);
+			pDoc->m_demo.setRenderSettings(rs);
 			pDoc->m_demo.restart();
 			break;
 		case 42005:	// line thickness
-			rs.lineThickness = pProperty->GetValue().intVal;
-			pTree->m_renderSettings = (rs);
+			pTree->lineThickness = pProperty->GetValue().intVal;
+			pDoc->m_demo.setRenderSettings(rs);
 			pDoc->m_demo.restart();
 			break;
 		case 42010:	// line color
 		{
 			COLORREF rgb = pProperty->GetValue().uintVal;
-			rs.lineColor = cv::Scalar(GetBValue(rgb), GetGValue(rgb), GetRValue(rgb));
-			pTree->m_renderSettings = (rs);
+			pTree->lineColor = cv::Scalar(GetBValue(rgb), GetGValue(rgb), GetRValue(rgb));
+			pDoc->m_demo.setRenderSettings(rs);
 			pDoc->m_demo.restart();
 			break;
 		}
 		case 42011:	// background color
 		{
 			COLORREF rgb = pProperty->GetValue().uintVal;
-			rs.backgroundColor = cv::Scalar(GetBValue(rgb), GetGValue(rgb), GetRValue(rgb));
-			pTree->m_renderSettings = (rs);
+			pTree->backgroundColor = cv::Scalar(GetBValue(rgb), GetGValue(rgb), GetRValue(rgb));
+			pDoc->m_demo.setRenderSettings(rs);
 			pDoc->m_demo.restart();
 			break;
 		}
@@ -465,17 +475,3 @@ LRESULT CPropertiesWnd::OnPropertyChanged(
 //	*pResult = 0;
 //}
 
-void CPropertiesWnd::OnMDIActivate(BOOL bActivate, CWnd* pActivateWnd, CWnd* pDeactivateWnd)
-{
-	CDockablePane::OnMDIActivate(bActivate, pActivateWnd, pDeactivateWnd);
-
-	InitPropList();
-}
-
-
-void CPropertiesWnd::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
-{
-	CDockablePane::OnActivate(nState, pWndOther, bMinimized);
-
-	InitPropList();
-}
