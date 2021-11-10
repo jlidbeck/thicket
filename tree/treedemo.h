@@ -30,6 +30,7 @@ private:
     mutable std::mutex m_mutex;
 
     RenderSettings m_renderSettings;
+    bool m_modified = false;
 
     HatTree const m_defaultTree;
 
@@ -96,6 +97,9 @@ private:
 public:
     bool processKey(int key);
 
+    bool isModified() const { return m_modified; }
+    void setModified(bool b) { m_modified = b; }
+
     void save();
     void save(fs::path fileName) const;
     void saveSettings(fs::path settingsPath) const;
@@ -116,6 +120,6 @@ public:
     void showReport(double debounceSeconds);
 
     RenderSettings const& getRenderSettings() const { return m_renderSettings; }
-    void setRenderSettings(RenderSettings const& rs) { m_renderSettings = rs; } // requires restart()
+    void setRenderSettings(RenderSettings const& rs) { m_renderSettings = rs; m_modified = true; } // requires restart()
 
 };
