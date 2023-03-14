@@ -60,6 +60,9 @@
     <ClInclude Include="ThicketPropertyGridCtrl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\tree\treedemo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Thicket.cpp">
