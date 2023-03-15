@@ -276,7 +276,7 @@ void CThicketDlg::OnFileOpen()
 
 void CThicketDlg::OnFileOpenImage()
 {
-	static CFileDialog dlg(TRUE, L"settings.json", 0, OFN_ALLOWMULTISELECT, L"JPG (*.jpg,*.jpeg)|*.jpg;*.jpeg|TIFF (*.tif,*.tiff)|*.tif;*.tiff|All (*.*)|*.*||\0", this);
+	static CFileDialog dlg(TRUE, L".png", 0, OFN_ALLOWMULTISELECT, L"PNG Images|*.png|Images|*.jpg;*.jpeg;*.png|All (*.*)|*.*||\0", this);
 	static CString sz;
 	
 	fs::path curPath = fs::absolute(L".");
