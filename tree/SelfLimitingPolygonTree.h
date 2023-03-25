@@ -594,10 +594,10 @@ public:
         transforms.clear();
         for (int i = 0; i < polygon.size(); ++i)
         {
-            transforms.push_back(createEdgeTransform(i, polygon.size() - 1, false, 0.0, m_ratio));
+            transforms.push_back(createEdgeTransform(i, (int)polygon.size() - 1, false, 0.0, m_ratio));
 
             if (m_ambidextrous)
-                transforms.push_back(createEdgeTransform(i, polygon.size() - 1, true, 1.0 - m_ratio, 1.0));
+                transforms.push_back(createEdgeTransform(i, (int)polygon.size() - 1, true, 1.0 - m_ratio, 1.0));
 
         }
 

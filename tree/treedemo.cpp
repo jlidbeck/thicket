@@ -593,7 +593,7 @@ bool TreeDemo::processKey(int key)
     case 20:    // Ctrl-T
     {
         // remove unexpressed genes
-        int count = pTree->transforms.size();
+        int count = (int)pTree->transforms.size();
         for (auto it = pTree->transforms.begin(); it != pTree->transforms.end(); )
         {
             if (pTree->transformCounts[it->transformMatrixKey] == 0)

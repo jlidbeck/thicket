@@ -106,7 +106,7 @@ LRESULT CALLBACK KeyboardProc(
         return 0;
     }
 
-    printf("KeyboardProc(%d, %d, %x)\n", code, wParam, lParam);
+    printf("KeyboardProc(%d, %d, %lx)\n", code, wParam, lParam);
 
     return ::CallNextHookEx(0, code, wParam, lParam);
 }
