@@ -106,7 +106,7 @@ LRESULT CALLBACK KeyboardProc(
         return 0;
     }
 
-    printf("KeyboardProc(%d, %d, %lx)\n", code, wParam, lParam);
+    printf("KeyboardProc(%d, %lld, %llx)\n", code, wParam, lParam);
 
     return ::CallNextHookEx(0, code, wParam, lParam);
 }
@@ -124,7 +124,7 @@ int main(int argc, char** argv)
     }
 
     HWND hwnd = ::GetConsoleWindow();
-    HINSTANCE hmod = (HINSTANCE)::GetWindowLong(hwnd, -6);
+    HINSTANCE hmod = (HINSTANCE)::GetWindowLongPtr(hwnd, -6);
     DWORD dwThreadId=0;
     
     // not using keyboard hook

@@ -31,8 +31,8 @@ public:
         m_rootNode.globalTransform = Matx33::eye();
 
         polygon = { {
-                { .1f,-1}, { .08,0}, { .1, 1},
-                {-.1, 1}, {-.08,0}, {-.1,-1}
+                { .1f,-1}, { .08f,0}, { .1f, 1},
+                {-.1f, 1}, {-.08f,0}, {-.1f,-1}
             } };
 
         transforms = { {
