@@ -1,5 +1,6 @@
 #pragma once
 
+#include "HatTree.h"
 #include "SelfLimitingPolygonTree.h"
 #include "GridTree.h"
 #include "ReptileTree.h"
@@ -32,7 +33,7 @@ private:
     cv::Size m_renderSizeHD       = cv::Size(2000, 1500);
     cv::Size m_renderSize         = m_renderSizePreview;
 
-    ThornTree const m_defaultTree;
+    HatTree const m_defaultTree;
 
     std::vector<std::shared_ptr<qtree> > m_breeders;
 

@@ -16,8 +16,16 @@
     <ClInclude Include="ColorTransform.h" />
     <ClInclude Include="treedemo.h" />
     <ClInclude Include="simple_svg.hpp" />
+    <ClInclude Include="HatTree.h">
+      <Filter>PolygonTrees</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="PolygonTrees">
+      <UniqueIdentifier>{8bedec3b-3ea9-4f97-ba5b-9137618fd225}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

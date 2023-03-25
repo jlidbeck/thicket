@@ -169,6 +169,7 @@
   <ItemGroup>
     <ClInclude Include="GridTree.h" />
     <ClInclude Include="ColorTransform.h" />
+    <ClInclude Include="HatTree.h" />
     <ClInclude Include="ReptileTree.h" />
     <ClInclude Include="SelfLimitingPolygonTree.h" />
     <ClInclude Include="simple_svg.hpp" />
