@@ -274,7 +274,7 @@ void CThicketApp::OnFileOpenImage()
 {
 	auto pWnd = ::AfxGetMainWnd();
 
-	CFileDialog dlg(TRUE, nullptr, nullptr, OFN_EXPLORER | OFN_FILEMUSTEXIST, L"jpeg (*.jpg, *.jpeg)|*.jpg;*.jpeg|PNG|*.png|All Files|*.*||", pWnd);
+	CFileDialog dlg(TRUE, nullptr, nullptr, OFN_EXPLORER | OFN_FILEMUSTEXIST, L"PNG Images|*.png|Images|*.jpg;*.jpeg;*.png|All (*.*)|*.*||", pWnd);
 	CString sz;
 
 	fs::path curPath = fs::absolute(L".");
