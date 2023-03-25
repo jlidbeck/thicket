@@ -1,19 +1,13 @@
 #pragma once
 
-#include "HatTree.h"
-#include "SelfLimitingPolygonTree.h"
-#include "GridTree.h"
-#include "ReptileTree.h"
+#include "tree.h"
 #include <opencv2/core/core.hpp>
-#include <opencv2/imgproc.hpp>
-#include <iostream>
-#include <fstream>
 #include <filesystem>
 #include <vector>
 #include <chrono>
 #include <future>
 #include <mutex>
-#include <condition_variable>
+#include <memory>
 
 
 namespace fs = std::filesystem;
@@ -31,8 +25,6 @@ private:
 
     RenderSettings m_renderSettings;
     bool m_modified = false;
-
-    HatTree const m_defaultTree;
 
     std::vector<std::shared_ptr<qtree> > m_breeders;
 

@@ -1,7 +1,6 @@
 #include "treedemo.h"
-
-
-namespace fs = std::filesystem;
+#include "HatTree.h"
+#include "ExactRationalAngleTree.h"
 
 
 using std::cout;
@@ -185,7 +184,9 @@ void TreeDemo::processCommands()
 
         if (!m_pTree)
         {
-            m_pTree = m_defaultTree.clone();
+            HatTree const defaultTree;
+
+            m_pTree = defaultTree.clone();
             cout << "--- Set default tree\n";
         }
 
