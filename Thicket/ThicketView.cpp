@@ -84,12 +84,9 @@ void CThicketView::OnDraw(CDC* pDC)
 
 		CRect clip;
 		GetClipBox(*pDC, &clip);
-		//CRect clientRect;
-		//GetClientRect(&clientRect);
-		//pDC->IntersectClipRect(clientRect);
 
-		CBrush brush(0x555555);
-		pDC->FillRect(&clip, &brush);
+		//CBrush brush(0x555555);
+		//pDC->FillRect(&clip, &brush);
 
 		//SetDIBitsToDevice(*pDC, 0, 0, m_mat.cols, m_mat.rows, 0, 0, 0, m_mat.rows,
 		//    m_mat.data, (BITMAPINFO*)&bi, DIB_RGB_COLORS);
