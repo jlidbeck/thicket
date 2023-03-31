@@ -16,4 +16,7 @@
     <ClInclude Include="treedemo.h" />
     <ClInclude Include="simple_svg.hpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
 </Project>
