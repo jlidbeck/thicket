@@ -34,13 +34,25 @@ public:
         return ColorTransform{};
     }
 
+    //  Constant color function. Regardless of input, produces [h, l, s]
     template<typename _Tp>
-    static ColorTransform hlsSink(_Tp b, _Tp g, _Tp r, _Tp a)
+    static ColorTransform colorConstant(_Tp h, _Tp l, _Tp s)
     {
         return ColorTransform{ cv::Matx<_Tp, 4, 4>(
-            1 - a, 0, 0, a * b,
-            0, 1 - a, 0, a * g,
-            0, 0, 1 - a, a * r,
+            0, 0, 0, h,
+            0, 0, 0, l,
+            0, 0, 0, s,
+            0, 0, 0, 1) };
+    }
+
+    //  Color sink function. If 0 < a <= 1, function applied to any color interpolates it toward [h, l, s]
+    template<typename _Tp>
+    static ColorTransform hlsSink(_Tp h, _Tp l, _Tp s, _Tp a)
+    {
+        return ColorTransform{ cv::Matx<_Tp, 4, 4>(
+            1 - a, 0, 0, a * h,
+            0, 1 - a, 0, a * l,
+            0, 0, 1 - a, a * s,
             0, 0, 0, 1) };
     }
 
@@ -54,7 +66,9 @@ public:
             0, 0, 0, 1) };
     }
 
-    // args: ha, hb, la, lb, sa, sb
+    // 3D scale and translate.
+    // args: { hs, ht, ls, lt, ss, st }
+    // Returned matrix transforms (h,l,s) to (h*hs+ht, l*ls+lt, s*ss+st)
     template<typename _Tp>
     static ColorTransform hlsTransform(std::vector<_Tp> const& args)
     {
@@ -85,13 +99,13 @@ public:
     //  Hue shift: subset of hlsTransform with only one d.f.
     bool asHueShift(float& hueShift) const
     {
+        // row 0, col 3 is the hue translation
         hueShift = hls(0, 3);
-        std::vector<float> args{ 1.0f, hueShift, 1.0f, 0.0f, 1.0f, 0.0f };
-        auto test = ColorTransform::hlsTransform(args);
+        auto test = ColorTransform::hueShift(hueShift);
         return util::approximatelyEqual(hls, test.hls);
     }
 
-    //  Hls sink: subset of hlsTransform which when applied repeatedly converge to an hls value
+    //  HLS sink: subset of hlsTransform which when applied repeatedly converge to an HLS value
     bool asHlsSink(float& h, float& l, float& s, float& a) const
     {
         a = 1.0f - hls(0, 0);

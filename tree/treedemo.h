@@ -29,9 +29,7 @@ public:
 private:
     mutable std::mutex m_mutex;
 
-    cv::Size m_renderSizePreview  = cv::Size( 200,  200);
-    cv::Size m_renderSizeHD       = cv::Size(2000, 1500);
-    cv::Size m_renderSize         = m_renderSizePreview;
+    RenderSettings m_renderSettings;
 
     HatTree const m_defaultTree;
 
@@ -44,14 +42,13 @@ private:
     bool m_stepping = false;
 
     int m_presetIndex = 0;
-    float m_imagePadding = 0.1f;
 
     // current model
-    double m_modelTime;
+    double m_modelTime = 0;
     // current model run stats
-    int m_totalNodesProcessed;
+    int m_totalNodesProcessed = 0;
     std::chrono::steady_clock::time_point m_startTime;    // wall-clock time
-    double m_lastReportTime;                              // wall-clock time
+    double m_lastReportTime = 0;                              // wall-clock time
 
     // commands
     bool m_restart = true;
@@ -117,4 +114,8 @@ public:
 
     void showCommands();
     void showReport(double debounceSeconds);
+
+    RenderSettings const& getRenderSettings() const { return m_renderSettings; }
+    void setRenderSettings(RenderSettings const& rs) { m_renderSettings = rs; } // requires restart()
+
 };

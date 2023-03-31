@@ -207,9 +207,10 @@ void TreeDemo::processCommands()
 
         cout << "--- Starting run: " << m_pTree->name << ": " << m_pTree->transforms.size() << " transforms" << endl;
 
-        canvas.create(cv::Mat3b(m_renderSize));
-        canvas.clear();
-        canvas.setTransformToFit(m_pTree->getBoundingRect(), m_imagePadding);
+        canvas.create(m_renderSettings);
+
+        // todo: move this to renderer
+        canvas.setTransformToFit(m_pTree->getBoundingRect(), m_renderSettings.imagePadding);
 
 
         m_startTime = std::chrono::steady_clock::now();
@@ -428,7 +429,10 @@ bool TreeDemo::processKey(int key)
     switch (key)
     {
     case 'h':           // HD/preview toggle
-        m_renderSize = (m_renderSize == m_renderSizePreview ? m_renderSizeHD : m_renderSizePreview);
+        m_renderSettings.renderSize = 
+            ( m_renderSettings.renderSize == m_renderSettings.renderSizePreview 
+            ? m_renderSettings.renderSizeHD 
+            : m_renderSettings.renderSizePreview );
         restart();
         return true;
 
