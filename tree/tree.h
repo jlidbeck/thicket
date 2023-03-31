@@ -116,7 +116,7 @@ public:
 
 
         svg::Polygon svgPolygon(
-            svg::Fill(svg::Color((int)(0.5+color[2]), (int)(0.5+color[1]), (int)(0.5+color[0]))), 
+            svg::Fill(svg::Color((int)color[2], (int)color[1], (int)color[0])), 
             svg::Stroke()   // no outline
         );
         for (auto const& p : v)
