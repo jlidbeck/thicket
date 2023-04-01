@@ -418,6 +418,7 @@ LRESULT CPropertiesWnd::OnPropertyChanged(
 		{
 		case 42000:	// random seed
 			pTree->setRandomSeed(pProperty->GetValue().intVal);
+			pDoc->m_demo.setModified(true);
 			pDoc->m_demo.restart();
 			break;
 		case 42001:	// render size
@@ -459,6 +460,9 @@ LRESULT CPropertiesWnd::OnPropertyChanged(
 	default:
 		MessageBox(_T("Something changed"));
 	}
+
+	if(pDoc->m_demo.isModified())
+		pDoc->SetModifiedFlag(1);
 
 	return 0;
 }
