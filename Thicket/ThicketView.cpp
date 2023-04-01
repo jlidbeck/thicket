@@ -34,6 +34,7 @@ BEGIN_MESSAGE_MAP(CThicketView, CScrollView)
 	ON_WM_RBUTTONUP()
 	ON_WM_CHAR()
 	ON_WM_LBUTTONDOWN()
+	ON_WM_MOUSEMOVE()
 END_MESSAGE_MAP()
 
 // CThicketView construction/destruction
@@ -165,9 +166,9 @@ void CThicketView::OnLButtonDown(UINT nFlags, CPoint point)
 
 	if (pDoc && !m_mat.empty())
 	{
-		CClientDC dc(this);
-		OnPrepareDC(&dc);
-		dc.LPtoDP(&point);
+		//CClientDC dc(this);
+		//OnPrepareDC(&dc);
+		//dc.LPtoDP(&point);
 
 		auto pt = pDoc->m_demo.canvas.canvasToModel(cv::Point2f(point.x, point.y));
 
@@ -195,6 +196,52 @@ void CThicketView::OnLButtonDown(UINT nFlags, CPoint point)
 	}
 
 	CScrollView::OnLButtonDown(nFlags, point);
+}
+
+
+void CThicketView::OnMouseMove(UINT nFlags, CPoint point)
+{
+	auto pDoc = GetDocument();
+
+	if (pDoc && !m_mat.empty())
+	{
+		point += GetScrollPosition();
+
+		//CClientDC dc(this);
+		//OnPrepareDC(&dc);
+		//dc.LPtoDP(&point);
+
+		// map point to model coords
+		auto pt = pDoc->m_demo.canvas.canvasToModel(cv::Point2f(point.x, point.y));
+
+		CString str;
+		str.Format(_T("%.3f, %.3f : "), pt.x, pt.y);
+
+		auto pTree = pDoc->m_demo.getTree();
+
+		std::vector<qnode> nodes;
+
+		// display info on node
+		pTree->getNodesIntersecting(cv::Rect2f(pt, cv::Size2f(0, 0)), nodes);
+		if (!nodes.empty())
+		{
+			std::ostringstream oss;
+			for (auto& node : nodes)
+			{
+				vector<string> lineage;
+				pTree->getLineage(node, lineage);
+				oss << "Node[" << node.id << "]:";
+				for (auto& tname : lineage)
+					oss << " " << tname;
+				oss << endl;
+			}
+
+			auto pMainFrame = DYNAMIC_DOWNCAST(CFrameWnd, ::AfxGetMainWnd());
+			pMainFrame->SetMessageText(str + CString(oss.str().c_str()));
+		}
+	}
+
+	CScrollView::OnMouseMove(nFlags, point);
 }
 
 
@@ -291,7 +338,14 @@ void CThicketView::OnChar(UINT nChar, UINT nRepCnt, UINT nFlags)
 		processed = pDoc->m_demo.processKey(nChar);
 		if (processed)
 		{
-			pDoc->SetModifiedFlag(1);
+			m_mat = pDoc->m_demo.canvas.getImage();
+			CSize sz(m_mat.cols, m_mat.rows);
+			SetScrollSizes(MM_TEXT, sz);
+
+			pDoc->SetModifiedFlag(pDoc->m_demo.isModified());
+			pDoc->UpdateAllViews(this, 0, nullptr);
+			// TODO: update all properties panes
+
 			return;
 		}
 	}
