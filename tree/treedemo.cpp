@@ -1,7 +1,6 @@
 #include "treedemo.h"
-
-
-namespace fs = std::filesystem;
+#include "HatTree.h"
+#include "ExactRationalAngleTree.h"
 
 
 using std::cout;
@@ -185,7 +184,9 @@ void TreeDemo::processCommands()
 
         if (!m_pTree)
         {
-            m_pTree = m_defaultTree.clone();
+            HatTree const defaultTree;
+
+            m_pTree = defaultTree.clone();
             cout << "--- Set default tree\n";
         }
 
@@ -197,6 +198,7 @@ void TreeDemo::processCommands()
             //m_pTree->name = std::string("R") + std::to_string(m_presetIndex);
             m_randomize = false;
             cout << "--- Randomized [" << m_presetIndex << +"]\n";
+            m_modified = true;
         }
         m_pTree->create();
         m_pTree->transformCounts.clear();
@@ -433,6 +435,7 @@ bool TreeDemo::processKey(int key)
             ( m_renderSettings.renderSize == m_renderSettings.renderSizePreview 
             ? m_renderSettings.renderSizeHD 
             : m_renderSettings.renderSizePreview );
+        m_modified = true;
         restart();
         return true;
 
@@ -447,12 +450,14 @@ bool TreeDemo::processKey(int key)
     case '+':
     case 0x6B0000:      // VK_ADD << 16
         m_pTree->domain = m_pTree->domain * 2.0f;
+        m_modified = true;
         restart();
         return true;
 
     case '-':
     case 0x6D0000:      // VK_SUBTRACT << 16
         m_pTree->domain = m_pTree->domain * 0.5f;
+        m_modified = true;
         restart();
         return true;
 

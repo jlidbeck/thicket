@@ -26,26 +26,25 @@ public:
 
         rootNodeColor = cv::Scalar(1.0, 1.0, 0.0, 1);
 
-        // override polygon with thorn/versatile polygon
-        float r32 = sqrtf(3.0f) / 2;
-        float r34 = sqrtf(3.0f) / 4;
+        // override polygon with hat monotile polygon
+        float const r32 = sqrt(3.0f) / 2;
+        float const r34 = sqrt(3.0f) / 4;
         polygon.clear();
         cv::Point2f pt(0, 0);
         polygon.push_back(pt);
-        polygon.push_back(pt += cv::Point2f(0.5f, 0));
-        polygon.push_back(pt += cv::Point2f(0.5f, 0));
-        polygon.push_back(pt += cv::Point2f(0.25, r34));
-        polygon.push_back(pt += cv::Point2f(-0.75f, r34));
-        polygon.push_back(pt += cv::Point2f(0, r32));
-        polygon.push_back(pt += cv::Point2f(-0.5f, 0));
-        polygon.push_back(pt += cv::Point2f(-0.25f, r34));
+        polygon.push_back(pt += cv::Point2f( 0.5f,   0  ));
+        polygon.push_back(pt += cv::Point2f( 0.5f,   0  ));
+        polygon.push_back(pt += cv::Point2f( 0.25f,  r34));
+        polygon.push_back(pt += cv::Point2f(-0.75f,  r34));
+        polygon.push_back(pt += cv::Point2f( 0,      r32));
+        polygon.push_back(pt += cv::Point2f(-0.5f,   0  ));
+        polygon.push_back(pt += cv::Point2f(-0.25f,  r34));
         polygon.push_back(pt += cv::Point2f(-0.75f, -r34));
-        polygon.push_back(pt += cv::Point2f(0, -r32));
-        polygon.push_back(pt += cv::Point2f(-0.5f, 0));
+        polygon.push_back(pt += cv::Point2f( 0,     -r32));
+        polygon.push_back(pt += cv::Point2f(-0.5f,   0  ));
         polygon.push_back(pt += cv::Point2f(-0.25f, -r34));
-        polygon.push_back(pt += cv::Point2f(0.75f, -r34));
-        polygon.push_back(pt += cv::Point2f(0.75f, r34));
-        //polygon.push_back(pt += cv::Point2f(0.25f, -r34));
+        polygon.push_back(pt += cv::Point2f( 0.75f, -r34));
+        polygon.push_back(pt += cv::Point2f( 0.75f,  r34));
 
         for (int i = 0; i < polygon.size(); ++i)
         {
